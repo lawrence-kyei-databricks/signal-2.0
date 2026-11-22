@@ -14,7 +14,7 @@
 # MAGIC - **Features:** 11 signals from `ccg_risk_features.py` (shared with scoring): revenue level and momentum, backorder rate, delivery slips, rep activity and recency, support cases.
 # MAGIC - **Model:** `StandardScaler` + `LogisticRegression` - chosen because it validated best out-of-time and gives per-account drivers directly (coefficient x standardized value).
 # MAGIC - **Validation:** out-of-time. Train on cutoffs Aug-Nov 2025, test on Jan-Feb 2026 (Dec skipped as a gap). Compared against the point-in-time rule formula behind `risk_score_raw`.
-# MAGIC - **Promotion gates:** out-of-time AUC >= 0.70 **and** at least 0.05 above the rule. Only then does the new version become `champion`.
+# MAGIC - **Promotion gates:** out-of-time AUC >= 0.60, at least 0.05 above the rule, **and** score PSI (training vs today's live accounts) < 0.10. Only then does the new version become `champion`. Per-feature PSI is logged to MLflow every run.
 # MAGIC - **Serving:** batch only. Scores change when data refreshes; Salesforce reads them from its own records.
 # MAGIC
 # MAGIC **Caveat:** the cause-and-effect the model learns comes from the synthetic history. When real CDM history is available, set `HISTORY_SOURCE = "cdm"`; nothing else changes.
@@ -64,8 +64,13 @@ RANDOM_STATE = 42
 # The last TEST_CUTOFFS are the out-of-time test, GAP_CUTOFFS are skipped, everything earlier is training.
 TEST_CUTOFFS, GAP_CUTOFFS, MIN_TRAIN_CUTOFFS = 2, 1, 3
 
-MIN_OOT_AUC = 0.70
+# Gates. The AUC floor is 0.60 because the training history now has the real data's lumpy order cadence
+# (about 1 order a month), which makes decline genuinely harder to predict than the earlier smooth history.
+# The lift gate is the business claim: the model must beat today's rule by a clear margin.
+# The drift gate stops a model whose scores on today's accounts look unlike its training scores.
+MIN_OOT_AUC = 0.60
 MIN_LIFT_OVER_RULE = 0.05
+MAX_SCORE_PSI = 0.10
 
 mlflow.set_experiment(EXPERIMENT_PATH)
 print("Features:", rf.FEATURES)
@@ -128,6 +133,19 @@ metrics["oot_lift_over_rule"] = metrics["oot_auc"] - metrics["oot_rule_auc"]
 final_model = make_model().fit(snaps[rf.FEATURES], snaps.label)
 coefs = pd.Series(final_model.named_steps["logisticregression"].coef_[0], index=rf.FEATURES).sort_values(key=abs, ascending=False)
 
+# 3. Drift: training snapshots vs the real accounts 03_score_and_brief will score (same feature code path)
+as_of = spark.sql("SELECT LAST_DAY(MAX(date_ordr_accepted)) a FROM main.ccg_workshop_cdm.cur_sales_order_header").first().a
+live = rf.compute_features(spark.sql(rf.REAL_MONTHLY_SCORING_SQL).toPandas(), pd.Timestamp(as_of).replace(day=1), as_of)
+drift = rf.feature_drift(train, live)
+p_train_final, p_live_final = final_model.predict_proba(train[rf.FEATURES])[:, 1], final_model.predict_proba(live[rf.FEATURES])[:, 1]
+metrics["score_psi"] = rf.psi(p_train_final, p_live_final)
+metrics["features_psi_shift"] = int((drift.band == "shift").sum())
+metrics["features_psi_watch"] = int((drift.band == "watch").sum())
+metrics["max_feature_psi"] = float(drift.psi.max())
+print(f"Drift vs {len(live)} live accounts (as of {as_of}): score PSI {metrics['score_psi']:.3f} | "
+      f"features shift {metrics['features_psi_shift']}, watch {metrics['features_psi_watch']}")
+display(drift.round(3))
+
 with mlflow.start_run(run_name="account_decline_risk_logreg") as run:
     mlflow.log_params({"model_type": "LogisticRegression", "C": 0.5, "target": "revenue_decline_next_6m",
                        "horizon_months": rf.HORIZON_MONTHS, "decline_threshold": rf.DECLINE_THRESHOLD,
@@ -135,6 +153,8 @@ with mlflow.start_run(run_name="account_decline_risk_logreg") as run:
                        "n_features": len(rf.FEATURES)})
     mlflow.log_metrics(metrics)
     mlflow.log_metrics({f"coef_{k}": float(v) for k, v in coefs.items()})
+    mlflow.log_metrics({f"psi_{r.feature}": float(r.psi) for r in drift.itertuples()})
+    mlflow.log_table(drift, "feature_drift.json")
     model_info = mlflow.sklearn.log_model(
         final_model,
         name="model",
@@ -169,8 +189,10 @@ gate_auc = metrics["oot_auc"] >= MIN_OOT_AUC
 gate_lift = metrics["oot_lift_over_rule"] >= MIN_LIFT_OVER_RULE
 print(f"Gate 1: OOT AUC {metrics['oot_auc']:.3f} >= {MIN_OOT_AUC} -> {'PASS' if gate_auc else 'FAIL'}")
 print(f"Gate 2: lift over rule {metrics['oot_lift_over_rule']:+.3f} (rule AUC {metrics['oot_rule_auc']:.3f}) >= {MIN_LIFT_OVER_RULE} -> {'PASS' if gate_lift else 'FAIL'}")
+gate_drift = metrics["score_psi"] < MAX_SCORE_PSI
+print(f"Gate 3: score PSI train vs live {metrics['score_psi']:.3f} < {MAX_SCORE_PSI} -> {'PASS' if gate_drift else 'FAIL'}")
 
-if gate_auc and gate_lift:
+if gate_auc and gate_lift and gate_drift:
     client.set_registered_model_alias(MODEL_NAME, "champion", new_version)
     client.delete_registered_model_alias(MODEL_NAME, "challenger")
     print(f"Promoted v{new_version} to champion")

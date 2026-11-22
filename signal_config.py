@@ -28,6 +28,13 @@ LAKEBASE_ENDPOINT = f"{LAKEBASE_BRANCH}/endpoints/primary"
 LAKEBASE_DATABASE = "databricks_postgres"
 LAKEBASE_CATALOG = "signal_cockpit_pg"
 SYNCED_TABLE = f"{LAKEBASE_CATALOG}.cockpit.account_risk_summary"
+# Every Delta table the app reads, synced to Lakebase so no app click waits on the SQL warehouse.
+# Delta source table name -> Lakebase synced table. All are SNAPSHOT mode, keyed on sf_account_id.
+SYNCED_TABLES = {
+    "account_risk_summary": SYNCED_TABLE,
+    "account_briefing_v2": f"{LAKEBASE_CATALOG}.cockpit.account_briefing_v2",
+    "account_deep_insights": f"{LAKEBASE_CATALOG}.cockpit.account_deep_insights",
+}
 APP_NAME = "signal-account-cockpit"
 
 # Salesforce (credentials come from the secret scope, never from code)

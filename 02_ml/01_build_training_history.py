@@ -12,11 +12,11 @@
 # MAGIC **Why it exists:** in the demo `cur_*` order data, backorders, delivery slips, and rep inactivity have no link to later revenue, so no model could learn those drivers. This table adds a realistic cause-and-effect pattern. The existing `cur_*` tables are not modified.
 # MAGIC
 # MAGIC **How it is generated (seeded, reproducible)**
-# MAGIC - **Anchored to reality:** each account's history wanders freely early on, then lands on its **real** backorder rate, slip rate, activity cadence, and revenue level over the last 6 months.
-# MAGIC - **Episodes:** supply disruptions (backorders, slips, cases rise) and relationship lapses (rep activity drops), mostly before the anchored window.
+# MAGIC - **Anchored to reality for the whole history:** every month sits around the account's **real** backorder rate, slip rate, activity cadence, case load, and revenue level, taken from the same live features the model scores. Levels wander slowly month to month, so training features match the scoring distribution (checked with PSI in `02_train_risk_model`).
+# MAGIC - **Episodes:** supply disruptions (backorders, slips, cases rise) and relationship lapses (rep activity drops) can start in any month. Their average effect is netted off the real levels.
 # MAGIC - **Lagged effect:** pain above the account's own normal in months m-3..m-1 lowers revenue in month m, and the impact fades over several months.
 # MAGIC - **Noise:** seasonality, per-account drift, and order-level randomness, so the signal is learnable but not trivial.
-# MAGIC - **Order cadence:** about 4 smaller orders per month per account (smoother than the demo data's ~0.5/month, closer to real CDM accounts). Raw order counts are therefore not used as model inputs.
+# MAGIC - **Order cadence:** each account orders at its **real** rate (about 1 order a month on average), so revenue is as lumpy as the real data. An earlier version used a smooth 4 orders a month, which made decline easier to predict than reality (out-of-time AUC 0.818 vs 0.625 now). Raw order counts are not used as model inputs.
 # MAGIC
 # MAGIC Re-running with the same seed gives identical output. Replace this table with real CDM history when it is available; set `HISTORY_SOURCE = "cdm"` in `02_train_risk_model`.
 
@@ -41,13 +41,18 @@ TARGET_TABLE = cfg.SYN_HISTORY_TABLE
 MONTHS = pd.date_range("2024-09-01", "2026-08-01", freq="MS")   # 24 months, ends at the real snapshot month
 N_M = len(MONTHS)
 
-# Generator settings (validated: model out-of-time AUC ~0.79 vs rule ~0.66 across seeds)
+# Generator settings. Calibrated so training features match the live scoring features (see the drift check in
+# 02_train_risk_model). Order cadence comes from each account's REAL order count, not a fixed smooth rate.
 SEED = 42
-ORDERS_PER_MONTH = 4
 OPS_EPISODE_RATE = 1.5     # expected supply disruption episodes per account over 24 months
 ENG_EPISODE_RATE = 1.2     # expected relationship lapse episodes per account
 EFFECT = 1.3               # strength of the pain -> revenue effect
 NOISE_SD = 0.12
+WANDER_SD = 0.25           # slow month-to-month wander of each account's backorder and activity levels
+CASE_EPISODE_RATE = 0.3    # extra support cases per month per unit of supply disruption
+REV_TREND = 0.10           # book-level revenue growth per year (real book grew over the window)
+EPISODE_BO_ALLOWANCE = 0.06   # average backorder rate added by episodes; netted off the real level
+LAPSE_ACTIVITY_SHARE = 0.84   # average share of months without a lapse; activity base is grossed up by it
 
 # Real account-month grain from the demo CDM + Salesforce tables (point-in-time up to the snapshot date)
 REAL_MONTHLY_SQL = """
@@ -110,7 +115,89 @@ def account_anchors(real_m, snapshot):
 real_m = spark.sql(REAL_MONTHLY_SQL).toPandas()
 snapshot = spark.sql("SELECT MAX(date_ordr_accepted) d FROM main.ccg_workshop_cdm.cur_sales_order_header").first().d
 anchors = account_anchors(real_m, snapshot)
-print(f"Real snapshot date: {snapshot} | real account-months: {len(real_m)} | accounts anchored: {len(anchors)}")
+
+# Anchor operational levels to the LIVE scoring features (same code path as 03_score_and_brief), so the model
+# trains on the distribution it will score. Episodes add pain on top, so their average effect is netted off.
+import ccg_risk_features as rf
+importlib.reload(rf)
+as_of = spark.sql("SELECT LAST_DAY(MAX(date_ordr_accepted)) a FROM main.ccg_workshop_cdm.cur_sales_order_header").first().a
+live = rf.compute_features(spark.sql(rf.REAL_MONTHLY_SCORING_SQL).toPandas(), pd.Timestamp(as_of).replace(day=1), as_of)
+anchors = anchors.set_index("customer_shipto_key").join(
+    live.set_index("customer_shipto_key")[["backorder_rate_6m", "activities_6m", "cases_6m", "high_priority_cases_6m"]], how="left")
+anchors["bo_end"] = (anchors.backorder_rate_6m.fillna(anchors.bo_end) - EPISODE_BO_ALLOWANCE).clip(0, 0.9)
+anchors["act_end"] = (anchors.activities_6m.fillna(anchors.act_end * 6) / 6 / LAPSE_ACTIVITY_SHARE).clip(0.02, 3)
+anchors["cases"] = anchors.cases_6m.fillna(anchors.cases)
+anchors["hp"] = anchors.high_priority_cases_6m.fillna(anchors.hp)
+anchors = anchors.reset_index()
+print(f"Real snapshot date: {snapshot} | real account-months: {len(real_m)} | accounts anchored: {len(anchors)} "
+      f"| live features as of {as_of}: {len(live)} accounts")
+
+# COMMAND ----------
+
+# DBTITLE 1,Causal History Generator
+def generate_history(anchors, seed=SEED, k_ops=3.0, k_eng=1.4, effect=EFFECT, noise_sd=NOISE_SD):
+    """Baselines sit on each account's REAL levels for the whole history; episodes can start in any month."""
+    rng = np.random.default_rng(seed)
+    rows = []
+    m_idx = np.arange(N_M)
+    for _, a in anchors.iterrows():
+        def wander(sd):
+            # Slow multiplicative wander (AR(1) on the log scale), centred so the last 6 months sit on the real level
+            x, e = np.zeros(N_M), rng.normal(0, sd, N_M)
+            for m in range(N_M):
+                x[m] = 0.8 * (x[m-1] if m else 0) + e[m]
+            return np.exp(x - x[-6:].mean())
+        bo_mu = np.clip(a.bo_end * wander(WANDER_SD), 0, 0.9)
+        slip_mu = np.clip(a.slip_end + rng.normal(0, 0.02, N_M), 0, 1)
+        act_mu = np.clip(a.act_end * wander(WANDER_SD), 0.02, 3)
+        case_mu = a.cases / 6.0
+        hp_share = (a.hp / a.cases) if a.cases > 0 else 0.35
+        ops_ep, eng_ep = np.zeros(N_M), np.zeros(N_M)
+        for _ in range(rng.poisson(OPS_EPISODE_RATE)):          # supply disruption episodes, any month
+            s, L, mag = rng.integers(0, N_M), rng.integers(2, 5), rng.uniform(0.15, 0.40)
+            ops_ep[s:s+L] += mag
+        for _ in range(rng.poisson(ENG_EPISODE_RATE)):          # relationship lapse episodes, any month
+            s, L = rng.integers(0, N_M), rng.integers(2, 6)
+            eng_ep[s:s+L] = np.maximum(eng_ep[s:s+L], rng.uniform(0.6, 0.95))
+        bo = np.clip(bo_mu + ops_ep + rng.normal(0, 0.02, N_M), 0, 0.95)
+        slip = np.clip(slip_mu + 0.3 * ops_ep, 0, 1)
+        acts = rng.poisson(np.maximum(act_mu * (1 - eng_ep), 0.01))
+        cases = rng.poisson(case_mu + CASE_EPISODE_RATE * ops_ep)
+        esc = rng.binomial(cases, np.clip(0.1 + 0.6 * ops_ep, 0, 0.9))
+        hp = rng.binomial(cases, np.clip(hp_share, 0, 1))
+        # Pain is measured against the account's own normal: only above-normal ops pain or engagement lapses hurt revenue
+        pain_dev = k_ops * np.maximum(0, bo - bo_mu) + k_eng * eng_ep + 0.15 * esc
+        pain_lag = np.array([pain_dev[max(0, m-3):m].mean() if m > 0 else 0 for m in range(N_M)])
+        hit = np.zeros(N_M)
+        for m in range(N_M):                                    # impact persists for months after the episode ends
+            hit[m] = (0.75 * hit[m-1] if m else 0) + 0.25 * pain_lag[m]
+        drift = rng.normal(0, 0.06)
+        season = 0.05 * np.sin(2 * np.pi * (MONTHS.month.values - 3) / 12)
+        rev_target = a.base_rev * np.exp(-effect * hit + drift * (m_idx - 23) / 12 + season + rng.normal(0, noise_sd, N_M))
+        orders_pm = max(a.orders / a.n_months, 0.3)             # the account's REAL order cadence
+        aov_s = a.base_rev / orders_pm
+        orders = rng.poisson(np.maximum(rev_target / aov_s, 0.02))
+        revenue = np.where(orders > 0, orders * aov_s * rng.uniform(0.6, 1.4, N_M), 0.0)
+        lines = orders * 2 + rng.poisson(orders)
+        slipped = rng.binomial(lines, slip)
+        slip_days = np.array([rng.gamma(2, 7.5 / 2, s).sum() if s else 0 for s in slipped]).round()   # real mean ~7.5 days
+        qty = np.round(lines * a.qty_per_line * rng.uniform(0.8, 1.2, N_M)).astype(int)
+        qty_bo = rng.binomial(qty, bo)
+        for m in range(N_M):
+            last_act = MONTHS[m] + pd.Timedelta(days=int(rng.integers(0, 28))) if acts[m] > 0 else pd.NaT
+            rows.append((int(a.customer_shipto_key), MONTHS[m], float(round(revenue[m], 2)), int(orders[m]), int(lines[m]),
+                         int(slipped[m]), int(slip_days[m]), int(qty[m]), int(qty_bo[m]), int(acts[m]), last_act,
+                         int(cases[m]), int(esc[m]), int(hp[m])))
+    cols = ["customer_shipto_key","month_start","revenue","orders","order_lines","lines_slipped","slip_days",
+            "qty_total","qty_backordered","activities","last_activity_date","cases_opened","escalations","high_priority_cases"]
+    df = pd.DataFrame(rows, columns=cols)
+    # Book-level growth: the real book grew over the window, so revenue trends up toward the snapshot month
+    ms = pd.to_datetime(df.month_start)
+    df["revenue"] = (df.revenue * np.exp(REV_TREND * (ms.dt.year * 12 + ms.dt.month - (MONTHS[-1].year * 12 + MONTHS[-1].month)) / 12)).round(2)
+    return df
+
+hist = generate_history(anchors)
+print(f"Generated {len(hist)} account-months for {hist.customer_shipto_key.nunique()} accounts ({hist.month_start.min().date()} to {hist.month_start.max().date()})")
 
 # COMMAND ----------
 

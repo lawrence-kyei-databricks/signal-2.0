@@ -67,12 +67,16 @@ X = rf.compute_features(real_monthly, CUTOFF_MONTH, AS_OF)
 prob = model.predict_proba(X[rf.FEATURES])[:, 1]
 drivers, _ = rf.top_drivers(model, X)
 
-scored = X.assign(risk_probability=prob, risk_category=rf.risk_category(prob), top_risk_driver=drivers)
+# Rank the book by EXPECTED REVENUE AT RISK (probability x 6-month revenue run rate), not probability alone
+run_rate = rf.revenue_run_rate(real_monthly, CUTOFF_MONTH).set_index("customer_shipto_key").revenue_run_rate_6m
+expected = prob * run_rate.reindex(X.customer_shipto_key).fillna(0).values
+scored = X.assign(risk_probability=prob, expected_revenue_at_risk=expected,
+                  risk_category=rf.risk_category(expected), top_risk_driver=drivers)
 mapping = spark.table(f"{SCHEMA}.sf_cdm_key_mapping").select("sf_account_id", "customer_shipto_key").toPandas()
 scored = scored.merge(mapping, on="customer_shipto_key", how="inner")
 assert len(scored) == scored.sf_account_id.nunique() == 200, "Expected one scored row per account"
 
-spark.createDataFrame(scored[["sf_account_id", "customer_shipto_key", "risk_probability", "risk_category", "top_risk_driver"] + rf.FEATURES]) \
+spark.createDataFrame(scored[["sf_account_id", "customer_shipto_key", "risk_probability", "expected_revenue_at_risk", "risk_category", "top_risk_driver"] + rf.FEATURES]) \
     .withColumn("ml_risk_score", F.round(F.col("risk_probability") * 100, 1)) \
     .withColumn("model_version", F.lit(str(MODEL_VERSION))) \
     .withColumn("snapshot_date", F.lit(SNAPSHOT_DATE)) \
@@ -91,13 +95,14 @@ AS SELECT
   CAST(s.days_since_last_activity AS INT) AS days_since_last_activity,
   CAST(ROUND(s.backorder_rate_6m * 100, 1) AS DECIMAL(4,1)) AS pct_qty_backordered,
   c.open_pipeline_value, c.annual_revenue, c.open_case_count,
-  s.top_risk_driver, ROUND(s.risk_probability, 4) AS risk_probability, s.model_version, s.snapshot_date
+  s.top_risk_driver, ROUND(s.risk_probability, 4) AS risk_probability, s.model_version, s.snapshot_date,
+  ROUND(s.expected_revenue_at_risk, 2) AS expected_revenue_at_risk
 FROM scored_now s JOIN {SCHEMA}.customer_360 c ON s.sf_account_id = c.sf_account_id
 """)
 
 summary = spark.table(f"{SCHEMA}.account_risk_summary")
 print(f"Scored {summary.count()} accounts with v{MODEL_VERSION}:", {r.risk_category: r["count"] for r in summary.groupBy("risk_category").count().collect()})
-display(summary.orderBy(F.desc("ml_risk_score")).limit(15))
+display(summary.orderBy(F.desc("expected_revenue_at_risk")).limit(15))
 
 # COMMAND ----------
 
@@ -324,27 +329,46 @@ for rec in q.json()["records"]:
 
 # COMMAND ----------
 
-# DBTITLE 1,Refresh Lakebase and verify the app serves the new scores
-# The synced table runs in SNAPSHOT mode, so it does not follow the Delta source on its own.
-# Trigger its pipeline after every rescore, then prove Lakebase matches Delta.
+# DBTITLE 1,Refresh Lakebase and the metric view, verify every consumer matches
+# The app reads ONLY from Lakebase: risk, AI briefing and deep insights are all synced tables (cfg.SYNCED_TABLES).
+# They run in SNAPSHOT mode, so they do not follow Delta on their own. Trigger every sync after each rescore,
+# then prove each Lakebase copy matches its Delta source. Any mismatch fails the job, so the app cannot serve stale data.
 import time
 from databricks.sdk import WorkspaceClient
 
 w = WorkspaceClient()
-synced = w.api_client.do("GET", f"/api/2.0/postgres/synced_tables/{cfg.SYNCED_TABLE}")
-sync_pipeline = synced["status"]["pipeline_id"]
-update_id = w.pipelines.start_update(pipeline_id=sync_pipeline).update_id
+updates = {}
+for src, synced_name in cfg.SYNCED_TABLES.items():
+    pipeline_id = w.api_client.do("GET", f"/api/2.0/postgres/synced_tables/{synced_name}")["status"]["pipeline_id"]
+    updates[src] = (pipeline_id, w.pipelines.start_update(pipeline_id=pipeline_id).update_id)
+
+states = {}
 for _ in range(90):
-    state = w.pipelines.get_update(pipeline_id=sync_pipeline, update_id=update_id).update.state.value
-    if state in ("COMPLETED", "FAILED", "CANCELED"):
+    states = {src: w.pipelines.get_update(pipeline_id=p, update_id=u).update.state.value for src, (p, u) in updates.items()}
+    if all(s in ("COMPLETED", "FAILED", "CANCELED") for s in states.values()):
         break
     time.sleep(10)
-assert state == "COMPLETED", f"Lakebase sync ended in state {state}"
+assert all(s == "COMPLETED" for s in states.values()), f"Lakebase syncs did not all complete: {states}"
 
-parity = spark.sql(f"""
-  SELECT 'delta' AS side, COUNT(*) n, ROUND(SUM(ml_risk_score), 2) score_sum, COUNT_IF(risk_category = 'High') high FROM {SCHEMA}.account_risk_summary
-  UNION ALL
-  SELECT 'lakebase', COUNT(*), ROUND(SUM(ml_risk_score), 2), COUNT_IF(risk_category = 'High') FROM {cfg.SYNCED_TABLE}""").collect()
-d, l = parity
-assert (d.n, d.score_sum, d.high) == (l.n, l.score_sum, l.high), f"Lakebase does not match Delta: {parity}"
-print(f"Lakebase sync {update_id}: {state} | {l.n} rows, score sum {l.score_sum}, {l.high} High - matches Delta")
+# Parity check per table: row count plus a column-sum fingerprint
+CHECKS = {
+    "account_risk_summary": "COUNT(*) n, ROUND(SUM(ml_risk_score), 2) fp1, COUNT_IF(risk_category = 'High') fp2",
+    "account_briefing_v2": "COUNT(*) n, ROUND(SUM(ml_risk_score), 2) fp1, COUNT_IF(numbers_verified) fp2",
+    "account_deep_insights": "COUNT(*) n, ROUND(SUM(revenue_at_risk), 0) fp1, ROUND(SUM(rev_trend_pct), 1) fp2",
+}
+for src, synced_name in cfg.SYNCED_TABLES.items():
+    d = spark.sql(f"SELECT {CHECKS[src]} FROM {SCHEMA}.{src}").first()
+    l = spark.sql(f"SELECT {CHECKS[src]} FROM {synced_name}").first()
+    assert tuple(d) == tuple(l), f"Lakebase {synced_name} does not match Delta {src}: delta={tuple(d)} lakebase={tuple(l)}"
+    print(f"Lakebase {src:22s} sync {updates[src][1]}: {states[src]} | {l.n} rows, fingerprint ({l.fp1}, {l.fp2}) - matches Delta")
+
+# The metric view (Genie + dashboard) has materializations in RELAXED mode: matching queries read the last refresh
+# without a freshness check. Refresh it after every rescore, then prove it agrees with the scored tables.
+spark.sql(f"REFRESH MATERIALIZED VIEW {cfg.METRIC_VIEW}")
+mv = spark.sql(f"""SELECT MEASURE(`Account Count`) n, ROUND(MEASURE(`Total Annual Revenue`), 0) rev,
+                          ROUND(MEASURE(`Revenue At Risk`), 0) rar, MEASURE(`At Risk Accounts`) high FROM {cfg.METRIC_VIEW}""").first()
+src = spark.sql(f"""SELECT COUNT(*) n, ROUND(SUM(c.annual_revenue), 0) rev, ROUND(SUM(c.annual_revenue * r.risk_probability), 0) rar,
+                           COUNT_IF(r.risk_category = 'High') high
+                    FROM {SCHEMA}.customer_360 c LEFT JOIN {SCHEMA}.account_risk_summary r ON c.sf_account_id = r.sf_account_id""").first()
+assert tuple(mv) == tuple(src), f"Metric view does not match the scored tables: metric view={tuple(mv)} source={tuple(src)}"
+print(f"Metric view {cfg.METRIC_VIEW} refreshed | {mv.n} accounts, revenue {mv.rev:,.0f}, at risk {mv.rar:,.0f}, {mv.high} High - matches source")

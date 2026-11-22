@@ -155,8 +155,26 @@ def rule_score(df):
             + np.minimum(10, df.high_priority_cases_6m * 5))
 
 
-def risk_category(prob):
-    return np.where(prob >= 0.5, "High", np.where(prob >= 0.25, "Medium", "Low"))
+# Bands are rank-based within each scoring run on EXPECTED REVENUE AT RISK (probability x the account's 6-month
+# revenue run rate): the top 10% of the book is High, the next 30% Medium. Out-of-time, ranking by expected dollar
+# loss put 46.1% of lost revenue in the top 20% vs 35.1% ranking by probability alone (today's rule: 28.4%).
+# Rank-based bands also stay a workable size when a recalibrated model's probabilities compress.
+HIGH_SHARE, MEDIUM_SHARE = 0.10, 0.30
+
+
+def risk_category(score, high_share=HIGH_SHARE, medium_share=MEDIUM_SHARE):
+    """Rank-based band for each value of `score` (pass expected revenue at risk)."""
+    rank = pd.Series(np.asarray(score, float)).rank(ascending=False, method="first").values / len(score)
+    return np.where(rank <= high_share, "High", np.where(rank <= high_share + medium_share, "Medium", "Low"))
+
+
+def revenue_run_rate(monthly, cutoff_month, horizon=HORIZON_MONTHS):
+    """Trailing 12-month order revenue scaled to `horizon` months: the same base the decline label uses."""
+    d = _prep(monthly)
+    c = pd.Timestamp(cutoff_month)
+    keys = pd.Index(sorted(d.customer_shipto_key.unique()), name="customer_shipto_key")
+    trail = d[(d.month_start > c - pd.DateOffset(months=12)) & (d.month_start <= c)].groupby("customer_shipto_key").revenue.sum()
+    return (trail.reindex(keys).fillna(0) * horizon / 12).rename("revenue_run_rate_6m").reset_index()
 
 
 def top_drivers(pipeline, X, k=2):
@@ -172,3 +190,32 @@ def top_drivers(pipeline, X, k=2):
         picked = [FEATURES[j] for j in order[:k] if contrib[i, j] > 0]
         drivers.append("; ".join(f"{DRIVER_LABELS[f][0]}: {DRIVER_LABELS[f][1](row)}" for f in picked) or "No elevated risk drivers")
     return drivers, pd.DataFrame(contrib, columns=FEATURES, index=X.index)
+
+
+# Drift between the training distribution and what the model scores today.
+# PSI bands (industry convention): < 0.10 stable, 0.10-0.25 watch, >= 0.25 shift.
+def psi(reference, current, bins=10):
+    """Population stability index of `current` against `reference`, using reference quantile bins."""
+    ref, cur = np.asarray(reference, float), np.asarray(current, float)
+    edges = np.unique(np.quantile(ref, np.linspace(0, 1, bins + 1)))
+    if len(edges) < 3:  # near-constant reference: split at the current median so there are two buckets
+        edges = np.unique(np.concatenate([edges, np.quantile(cur, [0.5])]))
+    edges[0], edges[-1] = -np.inf, np.inf
+    r = np.clip(np.histogram(ref, edges)[0] / len(ref), 1e-4, None)
+    c = np.clip(np.histogram(cur, edges)[0] / len(cur), 1e-4, None)
+    return float(np.sum((c - r) * np.log(c / r)))
+
+
+def psi_band(value):
+    return "shift" if value >= 0.25 else ("watch" if value >= 0.10 else "stable")
+
+
+def feature_drift(train_features, live_features):
+    """Per-feature PSI and KS statistic, training snapshots vs the accounts being scored."""
+    from scipy.stats import ks_2samp
+    rows = []
+    for f in FEATURES:
+        p = psi(train_features[f], live_features[f])
+        rows.append({"feature": f, "train_median": float(train_features[f].median()), "live_median": float(live_features[f].median()),
+                     "psi": p, "ks_stat": float(ks_2samp(train_features[f], live_features[f]).statistic), "band": psi_band(p)})
+    return pd.DataFrame(rows)

@@ -144,26 +144,27 @@ log("  indexes : idx_rep_actions_account, idx_rep_actions_rep, idx_audit_occurre
 
 # COMMAND ----------
 
-# DBTITLE 1,Create the Delta -> Lakebase synced table if missing
-# Serves account_risk_summary to the app from Postgres. SNAPSHOT mode: 03_score_and_brief
-# triggers a refresh after every rescore, so the app never serves stale scores.
-def synced_table():
+# DBTITLE 1,Create the Delta -> Lakebase synced tables if missing
+# Serves every table the app reads (cfg.SYNCED_TABLES: risk, AI briefing, deep insights) from Postgres.
+# SNAPSHOT mode: 03_score_and_brief triggers a refresh of all three after every rescore and checks parity.
+def synced_table(name):
     try:
-        return w.api_client.do("GET", f"/api/2.0/postgres/synced_tables/{cfg.SYNCED_TABLE}")
+        return w.api_client.do("GET", f"/api/2.0/postgres/synced_tables/{name}")
     except Exception as e:
         if "NOT_FOUND" in str(e) or "does not exist" in str(e).lower():
             return None
         raise
 
-st = synced_table()
-if st is None:
-    log(f"creating synced table {cfg.SYNCED_TABLE} ...")
-    w.api_client.do("POST", "/api/2.0/postgres/synced_tables", body={
-        "synced_table_id": cfg.SYNCED_TABLE,
+for src_table, synced_name in cfg.SYNCED_TABLES.items():
+  st = synced_table(synced_name)
+  if st is None:
+    log(f"creating synced table {synced_name} ...")
+    # synced_table_id is a QUERY parameter on this API; the body is the synced-table resource
+    w.api_client.do("POST", "/api/2.0/postgres/synced_tables", query={"synced_table_id": synced_name}, body={
         "spec": {
             "branch": cfg.LAKEBASE_BRANCH,
             "postgres_database": cfg.LAKEBASE_DATABASE,
-            "source_table_full_name": f"{cfg.SCHEMA}.account_risk_summary",
+            "source_table_full_name": f"{cfg.SCHEMA}.{src_table}",
             "primary_key_columns": ["sf_account_id"],
             "scheduling_policy": "SNAPSHOT",
             "create_database_objects_if_missing": True,
@@ -171,11 +172,11 @@ if st is None:
         },
     })
     for _ in range(60):
-        st = synced_table()
+        st = synced_table(synced_name)
         if st and st["status"].get("detailed_state", "").startswith("SYNCED_TABLE_ONLINE"):
             break
         time.sleep(10)
-log(f"synced table {cfg.SYNCED_TABLE}: {st['status'].get('detailed_state')} | source {st['status'].get('source_table_full_name')} | mode {st['status'].get('scheduling_policy')}")
+  log(f"synced table {synced_name}: {st['status'].get('detailed_state')} | source {st['status'].get('source_table_full_name')} | mode {st['status'].get('scheduling_policy')}")
 
 # COMMAND ----------
 

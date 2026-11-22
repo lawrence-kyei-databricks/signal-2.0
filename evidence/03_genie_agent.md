@@ -19,11 +19,17 @@ Result:
 
 | high_risk_accounts | expected_revenue_at_risk |
 |---|---|
-| 11 | 7621239.732491 |
+| 20 | 128845825.90 |
 
 Answer:
 
-> There are **11** High risk accounts, and the expected revenue at risk for **High risk accounts** is **7,621,239.732491**. In this result, all reported revenue at risk is tied to the **11** accounts filtered as **High** risk.
+> There are **20** high-risk accounts, and the expected revenue at risk for **Risk Category = High** is **$128,845,825.90**. In this result, all reported revenue at risk is tied to those **20** high-risk accounts.
+
+**Stale-data incident caught while capturing this (2026-11-22):** the first time this was asked after the Salesforce revenue
+realignment, Genie answered $11,138,514.53. The metric view's materializations run in RELAXED mode on a 6-hour schedule,
+so matching queries read the last refresh without a freshness check. Fix: `03_score_and_brief` now runs
+`REFRESH MATERIALIZED VIEW` after every rescore and fails the job unless the metric view's account count, revenue,
+revenue at risk, and High count equal the scored tables. After the fix Genie returned the figure above.
 
 ## Q: Which 5 accounts have the highest risk score, and what is their top risk driver?
 
@@ -40,30 +46,34 @@ FROM `main`.`ccg_workshop_cdm`.`mv_customer_360`
 WHERE `Account Name` IS NOT NULL
   AND `Top Risk Driver` IS NOT NULL
 GROUP BY ALL
-ORDER BY `risk_score` DESC
+ORDER BY `risk_score` DESC, `Account Name` ASC
 LIMIT 5
 ```
 
-Result:
+Result (model v6):
 
 | Account Name | Top Risk Driver | risk_score |
 |---|---|---|
-| Massachusetts General Hospital | Revenue vs 12-mo run rate: 0.33x; Revenue momentum (last 3 mo vs prior 3): -95% | 66.7 |
-| SAIC Life Sciences | Backorder rate (6 mo): 46%; Days since last rep activity: 198 | 65.8 |
-| AstraZeneca Biologics | Revenue vs 12-mo run rate: 0.20x; Revenue momentum (last 3 mo vs prior 3): -100% | 65.0 |
-| Berkeley Lights | Days since last rep activity: 365; Revenue momentum (last 3 mo vs prior 3): -40% | 62.2 |
-| University of Pittsburgh | Backorder rate (6 mo): 72%; Revenue momentum (last 3 mo vs prior 3): -80% | 61.7 |
+| SGS Life Sciences | Revenue vs 12-mo run rate: 0.72x; Order lines with pushed delivery dates (6 mo): 73% | 52.6 |
+| Tulsa Genomics Lab | Rep activity trend (last 3 mo vs prior 3): -4; Revenue vs 12-mo run rate: 0.70x | 49.6 |
+| AstraZeneca Biologics | Revenue vs 12-mo run rate: 0.20x; Revenue momentum (last 3 mo vs prior 3): -100% | 48.3 |
+| Penn Medicine Lancaster General | Rep activity trend (last 3 mo vs prior 3): -6; Revenue vs 12-mo run rate: 0.70x | 47.7 |
+| Massachusetts General Hospital | Revenue vs 12-mo run rate: 0.33x; Order lines with pushed delivery dates (6 mo): 80% | 47.5 |
 
-Answer:
+Answer (Genie's wording; its dashes shown as hyphens):
 
-> The **5 accounts with the highest risk scores** are:
-> - **Massachusetts General Hospital** — **66.7**; top risk driver: Revenue vs 12-month run rate at **0.33x** and revenue momentum down **95%**
-> - **SAIC Life Sciences** — **65.8**; top risk driver: **46%** backorder rate over 6 months and **198** days since last rep activity
-> - **AstraZeneca Biologics** — **65.0**; top risk driver: Revenue vs 12-month run rate at **0.20x** and revenue momentum down **100%**
-> - **Berkeley Lights** — **62.2**; top risk driver: **365** days since last rep activity and revenue momentum down **40%**
-> - **University of Pittsburgh** — **61.7**; top risk driver: **72%** backorder rate over 6 months and revenue momentum down **80%**
-> Across these five accounts, the main risk themes are sharp revenue declines, elevated backorder rates, and long gaps in sales activity.
+> The **5 accounts with the highest risk scores** in the results are:
+> - **SGS Life Sciences** - risk score **52.6**; top risk driver: **Revenue vs 12-mo run rate: 0.72x; Order lines with pushed delivery dates (6 mo): 73%**
+> - **Tulsa Genomics Lab** - risk score **49.6**; top risk driver: **Rep activity trend (last 3 mo vs prior 3): -4; Revenue vs 12-mo run rate: 0.70x**
+> - **AstraZeneca Biologics** - risk score **48.3**; top risk driver: **Revenue vs 12-mo run rate: 0.20x; Revenue momentum (last 3 mo vs prior 3): -100%**
+> - **Penn Medicine Lancaster General** - risk score **47.7**; top risk driver: **Rep activity trend (last 3 mo vs prior 3): -6; Revenue vs 12-mo run rate: 0.70x**
+> - **Massachusetts General Hospital** - risk score **47.5**; top risk driver: **Revenue vs 12-mo run rate: 0.33x; Order lines with pushed delivery dates (6 mo): 80%**
+> Across these 5 accounts, the most common risk pattern is **revenue running below the 12-month baseline**, often combined with either **pushed delivery dates** or **declining rep activity**.
 
-Check: the top 5 accounts and their drivers match `account_risk_summary` (the same drivers written to Salesforce): True.
+Check against `account_risk_summary` (the same drivers written to Salesforce): positions 1-4 match exactly. Position 5 is a
+tie at 47.5 between Massachusetts General Hospital and Moderna Therapeutics; Genie breaks the tie by name.
 
-Cross-check against the scored table: High accounts = 11, expected revenue at risk for High accounts = 7,621,239.00.
+This question ranks by probability. The rep worklist ranks by expected dollar loss, so its order differs by design
+(Whitehead Institute, Albuquerque Research Center, Massachusetts General Hospital lead it).
+
+Cross-check against the scored tables: High accounts = 20, expected revenue at risk for High accounts = 128,845,826.

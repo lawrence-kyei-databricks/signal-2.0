@@ -148,6 +148,14 @@ states_by_region = {
     "Southwest": ["TX", "OK", "NM", "LA", "AR", "MS"],
 }
 
+# Annual revenue comes from the ORDER data (system of record): each account's trailing 12-month order revenue as of
+# the order snapshot. This keeps Salesforce AnnualRevenue, opportunity sizes, and the model's revenue features on one base.
+order_rev_12m = spark.sql(f"""
+  SELECT h.customer_shipto_key k, SUM(l.qty_ordered * l.unit_price) rev12
+  FROM {CATALOG}.{SCHEMA}.cur_sales_order_header h JOIN {CATALOG}.{SCHEMA}.cur_sales_order_line l USING (sales_order_header_key)
+  WHERE h.date_ordr_accepted > DATE_SUB((SELECT MAX(date_ordr_accepted) FROM {CATALOG}.{SCHEMA}.cur_sales_order_header), 365)
+  GROUP BY 1""").toPandas().set_index("k").rev12.to_dict()
+
 account_rows = []
 for i in range(N_ACCOUNTS):
     key = i + 1  # matches customer_shipto_key 1-200
@@ -156,7 +164,8 @@ for i in range(N_ACCOUNTS):
     region = random.choice(regions)
     state = random.choice(states_by_region[region])
     
-    # Revenue tiers by segment
+    # Segment tiers are only a fallback for an account with no orders in the last 12 months.
+    # (The draws are kept so the random sequence, and every other generated field, stays reproducible.)
     if segment == "Pharma":
         annual_revenue = random.uniform(500_000, 5_000_000)
     elif segment == "Academic":
@@ -170,11 +179,8 @@ for i in range(N_ACCOUNTS):
     else:  # Regional Lab
         annual_revenue = random.uniform(75_000, 500_000)
     
-    # Bake in demo stories
-    if name == "University of Pittsburgh":
-        annual_revenue = 420_000  # mid-tier academic, spend declining
-    elif name == "Merck Life Sciences":
-        annual_revenue = 4_200_000  # big pharma, healthy
+    if order_rev_12m.get(key, 0) > 0:
+        annual_revenue = float(order_rev_12m[key])
     
     account_rows.append({
         "account_id": f"SF-ACCT-{key:04d}",

@@ -254,7 +254,7 @@ def kpis():
 
 @app.get("/api/worklist")
 def worklist(limit: int = 50, category: str | None = None, state: str | None = None):
-    """Rep worklist. Lakebase - single-digit-ms, hit on every page load and click.
+    """Rep worklist from Lakebase, ranked by expected revenue at risk (probability x 6-month run rate).
 
     Synced risk data LEFT JOINed to live rep decisions so an alert the rep has already
     handled drops out of the queue immediately. Filters run in SQL before LIMIT.
@@ -263,6 +263,7 @@ def worklist(limit: int = 50, category: str | None = None, state: str | None = N
     return pg_rows("""
         SELECT * FROM (
             SELECT s.sf_account_id, s.account_name, s.ml_risk_score, s.risk_category,
+                   s.expected_revenue_at_risk,
                    s.top_risk_driver, s.days_since_last_activity, s.annual_revenue,
                    s.open_pipeline_value, s.open_case_count,
                    COALESCE(a.action, 'new') AS alert_state,
@@ -278,27 +279,41 @@ def worklist(limit: int = 50, category: str | None = None, state: str | None = N
         ) wl
         WHERE (%(category)s::text IS NULL OR wl.risk_category = %(category)s)
           AND (%(state)s::text IS NULL OR wl.alert_state = %(state)s)
-        ORDER BY wl.ml_risk_score DESC
+        ORDER BY wl.expected_revenue_at_risk DESC NULLS LAST, wl.ml_risk_score DESC
         LIMIT %(limit)s
     """, {"category": category, "state": state, "limit": limit})
 
 
 @app.get("/api/account/{account_id}")
 def account_detail(account_id: str):
-    """Single account. Risk from Lakebase, AI briefing from the warehouse."""
-    risk = pg_rows("""
-        SELECT * FROM cockpit.account_risk_summary WHERE sf_account_id = %s
-    """, (account_id,))
-    if not risk:
-        raise HTTPException(404, f"account {account_id} not found")
+    """Single account. Everything from Lakebase in ONE connection: risk, AI briefing and deep insights are
+    synced tables (refreshed and parity-checked by 03_score_and_brief); history is the live rep-decision table.
+    No call here touches the SQL warehouse."""
+    with pg() as conn:
+        with conn.cursor() as cur:
+            def rows(sql):
+                cur.execute(sql, (account_id,))
+                cols = [c.name for c in cur.description]
+                return [dict(zip(cols, r)) for r in cur.fetchall()]
+            risk = rows("SELECT * FROM cockpit.account_risk_summary WHERE sf_account_id = %s")
+            if not risk:
+                raise HTTPException(404, f"account {account_id} not found")
+            briefing = rows("""SELECT action_type, urgency_score, recommendations, numbers_verified
+                               FROM cockpit.account_briefing_v2 WHERE sf_account_id = %s""")
+            insights = rows("""SELECT rev_trend_pct, risk_vs_industry
+                               FROM cockpit.account_deep_insights WHERE sf_account_id = %s""")
+            history = rows("""SELECT action, disposition, rep_email, risk_score_seen, created_at
+                              FROM cockpit_app.rep_actions WHERE sf_account_id = %s ORDER BY created_at DESC""")
 
-    briefing = wh_rows(f"SELECT * FROM {SCHEMA}.account_briefing_v2 WHERE sf_account_id = :id", {"id": account_id})
-    insights = wh_rows(f"SELECT * FROM {SCHEMA}.account_deep_insights WHERE sf_account_id = :id", {"id": account_id})
-    history = pg_rows("""
-        SELECT action, disposition, rep_email, risk_score_seen, created_at
-        FROM cockpit_app.rep_actions
-        WHERE sf_account_id = %s ORDER BY created_at DESC
-    """, (account_id,))
+    # Shape for the UI: split the numbered recommendations and use the field names the page renders
+    if briefing:
+        b = briefing[0]
+        recs = [s.strip() for s in re.split(r"(?m)^\s*\d\.\s+", b.get("recommendations") or "") if s.strip()]
+        briefing = [{"action_type": b["action_type"], "urgency": b["urgency_score"],
+                     **{f"recommendation_{i + 1}": r for i, r in enumerate(recs[:3])}}]
+    if insights:
+        i = insights[0]
+        insights = [{"revenue_trend_pct": i["rev_trend_pct"], "peer_risk_delta": i["risk_vs_industry"]}]
 
     return {"risk": risk[0],
             "briefing": briefing[0] if briefing else None,
