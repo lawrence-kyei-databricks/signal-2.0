@@ -1,4 +1,8 @@
 # Databricks notebook source
+# /// script
+# [tool.databricks.environment]
+# environment_version = "6"
+# ///
 # MAGIC %md
 # MAGIC # Signal Account Cockpit - Lakebase Roles & Grants
 # MAGIC
@@ -24,6 +28,10 @@
 # MAGIC The app physically cannot rewrite or erase a rep decision or an audit record -
 # MAGIC that is enforced by Postgres, not by application code. A "snooze" or a reversal
 # MAGIC is a new row, so the full decision history is always reconstructable.
+# MAGIC
+# MAGIC **Re-run this notebook whenever the app's `postgres` resource is re-attached** (for example after an app update
+# MAGIC that resends the resource list). Re-attaching recreates the service principal's Postgres role with no privileges,
+# MAGIC and the app then fails with `permission denied for schema cockpit`. Snapshot syncs do not affect these grants.
 
 # COMMAND ----------
 

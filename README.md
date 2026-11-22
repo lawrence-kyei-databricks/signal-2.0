@@ -87,4 +87,12 @@ Objects that cannot live in a Git folder are kept in `signal-2.0-assets/` next t
 5. Run `04_lakebase_app/01_lakebase_setup` and `02_app_grants`, then deploy the app from `04_lakebase_app/app`.
 6. Create the refresh job from `06_orchestration/signal_refresh_job.json` (the deployed job is `Signal 2.0 - Account Risk Refresh`).
 
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| App error `permission denied for schema cockpit` | The app's `postgres` resource was re-attached, which recreates its Postgres role with no privileges | Re-run `04_lakebase_app/02_app_grants` |
+| App worklist shows old scores | Lakebase synced table not refreshed after rescoring | Run the refresh job, or the last cell of `02_ml/03_score_and_brief` |
+| App update drops resources | `PATCH /api/2.0/apps/{name}` without the `resources` list removes them | Always send the full `resources` list with any app update, then re-run `02_app_grants` |
+
 Internal Databricks demo. Not for external distribution.
