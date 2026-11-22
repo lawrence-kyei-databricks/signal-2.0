@@ -109,6 +109,21 @@ One job (`06_orchestration`) runs it end to end: refresh Customer 360, score wit
 - **Classification:** every table carries governed `data_classification`, journey stage, and `data_origin = synthetic` tags; revenue columns are `confidential`.
 - **Model governance:** Unity Catalog model registry with a `champion` alias, set only when all three promotion gates pass; per-feature drift is logged to MLflow every run.
 
+## Production readiness
+
+| Concern | What is in place today | Next step for production |
+|---|---|---|
+| Deploy from code | Everything runs from this Git repo: notebooks, `signal_config.py`, the job definition (`06_orchestration/`), the app source (`04_lakebase_app/app/`), the metric view YAML | Package as a Declarative Automation Bundle with dev / test / prod targets and deploy from CI on merge |
+| Environments | One dev workspace; every name and ID lives in `signal_config.py`, so a new environment is a config change | Separate catalogs per environment (`dev_`, `prod_`) and per-target bundle variables |
+| Rollback | Model: move the `champion` alias back to the previous version (one call). Data: Delta time travel on every table. App: redeploy the previous deployment | Script the rollback as a job task so it is one click |
+| Stale or wrong data | The refresh job fails if any Lakebase table differs from Delta or the metric view differs from the scored tables | Alert on job failure to the Sales Ops owner |
+| Model quality | Three promotion gates (accuracy, lift over the rule, train vs live drift); per-feature drift logged to MLflow every run | Add a scheduled drift check between retrains and recalibrate on real decline labels |
+| Secrets | Salesforce credentials and domain only in a secret scope; `scripts/check_secrets.py` before every commit | Rotate on a schedule; move to a service principal for the job |
+| Identity | The app uses workspace SSO and on-behalf-of-user authorization, so Genie and audit rows carry the rep's identity | SCIM-provisioned groups for reps and managers |
+| Reproducibility | Generator calibration frozen in `syn_account_anchors`; reruns reproduce the training history exactly (0 rows differ) | Replace with real CDM history (`HISTORY_SOURCE = "cdm"`) |
+
+Evidence files are regenerated from the executed notebooks with `scripts/export_evidence.py` (run inside a Databricks notebook session), which also scrubs emails, hosts and the Salesforce domain.
+
 ## How AI was used as a teammate
 
 Built with **Genie Code** (Databricks' AI agent) in one workspace, with me making the product, modeling, and architecture decisions. Patterns that made the build trustworthy:

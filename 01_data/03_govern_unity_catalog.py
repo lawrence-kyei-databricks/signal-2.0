@@ -86,8 +86,9 @@ lineage = spark.sql(f"""
     AND source_table_full_name IS NOT NULL AND target_table_full_name IS NOT NULL
     AND source_table_full_name <> target_table_full_name
     AND target_table_full_name IN ('{S}.customer_360', '{S}.account_risk_summary', '{S}.account_deep_insights',
-                                   '{S}.account_briefing_v2', '{S}.mv_customer_360', '{cfg.SYNCED_TABLE}')
-    AND source_table_full_name RLIKE '{S}\\.(sf_|cur_|customer_360|account_risk_summary|account_deep_insights|sf_cdm_key_mapping)'
+                                   '{S}.account_briefing_v2', '{S}.mv_customer_360',
+                                   {", ".join(f"'{t}'" for t in cfg.SYNCED_TABLES.values())})
+    AND source_table_full_name RLIKE '{S}\\.(sf_|cur_|customer_360|account_risk_summary|account_deep_insights|account_briefing_v2|sf_cdm_key_mapping)'
   GROUP BY ALL ORDER BY target, source""")
 display(lineage)
 edges = {(r.source.split(".")[-1], r.target.split(".")[-1]) for r in lineage.collect()}
@@ -96,7 +97,9 @@ chain = [("sf_account", "customer_360"), ("cur_sales_order_line", "customer_360"
          ("account_risk_summary", "mv_customer_360"), ("account_risk_summary", "account_risk_summary")]
 for a, b in chain[:-1]:
     print(f"  {a:24s} -> {b:24s} {'captured' if (a, b) in edges else 'MISSING'}")
-print(f"  {'account_risk_summary':24s} -> {'lakebase synced table':24s} {'captured' if any(r.target == cfg.SYNCED_TABLE for r in lineage.collect()) else 'MISSING'}")
+targets = {r.target for r in lineage.collect()}
+for src, synced in cfg.SYNCED_TABLES.items():   # every table the app reads from Lakebase
+    print(f"  {src:24s} -> {'lakebase ' + synced.split('.')[-1]:24s} {'captured' if synced in targets else 'MISSING'}")
 
 # COMMAND ----------
 

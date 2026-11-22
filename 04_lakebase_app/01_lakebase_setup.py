@@ -266,7 +266,7 @@ with connect() as conn:
         cur.execute("""
             SELECT s.account_name, s.ml_risk_score, s.risk_category,
                    s.top_risk_driver, COALESCE(a.action, 'new') AS alert_state,
-                   a.rep_email
+                   a.rep_email, s.expected_revenue_at_risk
             FROM cockpit.account_risk_summary s
             LEFT JOIN LATERAL (
                 SELECT action, rep_email
@@ -275,17 +275,17 @@ with connect() as conn:
                 ORDER BY r.created_at DESC
                 LIMIT 1
             ) a ON TRUE
-            ORDER BY s.ml_risk_score DESC
+            ORDER BY s.expected_revenue_at_risk DESC NULLS LAST, s.ml_risk_score DESC
             LIMIT 10
         """)
         worklist = cur.fetchall()
 
 log()
-log("-- REP WORKLIST (the app's main query) --------------------------------")
-log(f"{'account':32s} {'score':>6s} {'category':9s} {'state':10s} {'driver':26s}")
-log("-" * 88)
+log("-- REP WORKLIST (the app's main query, ranked by expected revenue at risk) --")
+log(f"{'account':32s} {'$ at risk (6 mo)':>16s} {'score':>6s} {'category':9s} {'state':10s} {'driver':26s}")
+log("-" * 105)
 for r in worklist:
-    log(f"{(r[0] or '')[:31]:32s} {r[1]:6} {r[2]:9s} {r[4]:10s} {(r[3] or '')[:25]:26s}")
+    log(f"{(r[0] or '')[:31]:32s} {float(r[6] or 0):16,.0f} {r[1]:6} {r[2]:9s} {r[4]:10s} {(r[3] or '')[:25]:26s}")
 
 # COMMAND ----------
 
@@ -295,6 +295,9 @@ import time
 with connect() as conn:
     with conn.cursor() as cur:
         cur.execute("SELECT 1")  # warm the connection
+        # Look up the top account of the worklist (self-contained: does not depend on the write-path cell)
+        cur.execute("SELECT sf_account_id FROM cockpit.account_risk_summary ORDER BY expected_revenue_at_risk DESC NULLS LAST LIMIT 1")
+        acct = cur.fetchone()
         timings = []
         for _ in range(20):
             t0 = time.perf_counter()
@@ -308,7 +311,8 @@ with connect() as conn:
 
 timings.sort()
 log()
-log("-- LATENCY (single-account lookup, 20 runs) ---------------------------")
+log("-- LATENCY (single-account lookup, open connection, 20 runs) ----------")
+log("  database time only; per-screen times through the app are in evidence/07_latency.md")
 log(f"  p50 : {timings[len(timings)//2]:.1f} ms")
 log(f"  p95 : {timings[int(len(timings)*0.95)-1]:.1f} ms")
 log(f"  min : {timings[0]:.1f} ms")

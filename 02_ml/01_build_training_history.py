@@ -114,23 +114,32 @@ def account_anchors(real_m, snapshot):
 
 real_m = spark.sql(REAL_MONTHLY_SQL).toPandas()
 snapshot = spark.sql("SELECT MAX(date_ordr_accepted) d FROM main.ccg_workshop_cdm.cur_sales_order_header").first().d
-anchors = account_anchors(real_m, snapshot)
+
+# Calibration is FROZEN in ANCHOR_TABLE: computed once from the original workshop ERP and Salesforce data, then reused
+# on every rerun, so the training history is reproducible even if the source tables change later.
+ANCHOR_TABLE = f"{cfg.SCHEMA}.syn_account_anchors"
+if spark.catalog.tableExists(ANCHOR_TABLE):
+    anchors = spark.table(ANCHOR_TABLE).toPandas()
+    print(f"Using frozen anchors from {ANCHOR_TABLE}: {len(anchors)} accounts")
+else:
+  anchors = account_anchors(real_m, snapshot)
 
 # Anchor operational levels to the LIVE scoring features (same code path as 03_score_and_brief), so the model
 # trains on the distribution it will score. Episodes add pain on top, so their average effect is netted off.
-import ccg_risk_features as rf
-importlib.reload(rf)
-as_of = spark.sql("SELECT LAST_DAY(MAX(date_ordr_accepted)) a FROM main.ccg_workshop_cdm.cur_sales_order_header").first().a
-live = rf.compute_features(spark.sql(rf.REAL_MONTHLY_SCORING_SQL).toPandas(), pd.Timestamp(as_of).replace(day=1), as_of)
-anchors = anchors.set_index("customer_shipto_key").join(
-    live.set_index("customer_shipto_key")[["backorder_rate_6m", "activities_6m", "cases_6m", "high_priority_cases_6m"]], how="left")
-anchors["bo_end"] = (anchors.backorder_rate_6m.fillna(anchors.bo_end) - EPISODE_BO_ALLOWANCE).clip(0, 0.9)
-anchors["act_end"] = (anchors.activities_6m.fillna(anchors.act_end * 6) / 6 / LAPSE_ACTIVITY_SHARE).clip(0.02, 3)
-anchors["cases"] = anchors.cases_6m.fillna(anchors.cases)
-anchors["hp"] = anchors.high_priority_cases_6m.fillna(anchors.hp)
-anchors = anchors.reset_index()
-print(f"Real snapshot date: {snapshot} | real account-months: {len(real_m)} | accounts anchored: {len(anchors)} "
-      f"| live features as of {as_of}: {len(live)} accounts")
+  import ccg_risk_features as rf
+  importlib.reload(rf)
+  as_of = spark.sql("SELECT LAST_DAY(MAX(date_ordr_accepted)) a FROM main.ccg_workshop_cdm.cur_sales_order_header").first().a
+  live = rf.compute_features(spark.sql(rf.REAL_MONTHLY_SCORING_SQL).toPandas(), pd.Timestamp(as_of).replace(day=1), as_of)
+  anchors = anchors.set_index("customer_shipto_key").join(
+      live.set_index("customer_shipto_key")[["backorder_rate_6m", "activities_6m", "cases_6m", "high_priority_cases_6m"]], how="left")
+  anchors["bo_end"] = (anchors.backorder_rate_6m.fillna(anchors.bo_end) - EPISODE_BO_ALLOWANCE).clip(0, 0.9)
+  anchors["act_end"] = (anchors.activities_6m.fillna(anchors.act_end * 6) / 6 / LAPSE_ACTIVITY_SHARE).clip(0.02, 3)
+  anchors["cases"] = anchors.cases_6m.fillna(anchors.cases)
+  anchors["hp"] = anchors.high_priority_cases_6m.fillna(anchors.hp)
+  anchors = anchors.reset_index()
+  spark.createDataFrame(anchors).write.mode("overwrite").saveAsTable(ANCHOR_TABLE)
+  print(f"Computed anchors from the original workshop data (live features as of {as_of}) and froze them in {ANCHOR_TABLE}")
+print(f"Snapshot date: {snapshot} | account-months in ERP: {len(real_m)} | accounts anchored: {len(anchors)}")
 
 # COMMAND ----------
 
@@ -195,65 +204,6 @@ def generate_history(anchors, seed=SEED, k_ops=3.0, k_eng=1.4, effect=EFFECT, no
     ms = pd.to_datetime(df.month_start)
     df["revenue"] = (df.revenue * np.exp(REV_TREND * (ms.dt.year * 12 + ms.dt.month - (MONTHS[-1].year * 12 + MONTHS[-1].month)) / 12)).round(2)
     return df
-
-hist = generate_history(anchors)
-print(f"Generated {len(hist)} account-months for {hist.customer_shipto_key.nunique()} accounts ({hist.month_start.min().date()} to {hist.month_start.max().date()})")
-
-# COMMAND ----------
-
-# DBTITLE 1,Causal History Generator
-def generate_history(anchors, seed=SEED, k_ops=3.0, k_eng=1.4, effect=EFFECT, noise_sd=NOISE_SD):
-    rng = np.random.default_rng(seed)
-    rows = []
-    m_idx = np.arange(N_M)
-    w = np.clip((m_idx - 12) / 6, 0, 1)                      # free history first, fully on real levels in the last 6 months
-    for _, a in anchors.iterrows():
-        bo_start = np.clip(rng.beta(2, 10), 0, 0.6)
-        slip_start = np.clip(a.slip_end + rng.normal(0, 0.05), 0, 1)
-        act_start = np.clip(rng.gamma(3, 0.4), 0.1, 3)
-        bo_mu = (1 - w) * bo_start + w * a.bo_end
-        slip_mu = (1 - w) * slip_start + w * a.slip_end
-        act_mu = (1 - w) * act_start + w * a.act_end
-        ops_ep, eng_ep = np.zeros(N_M), np.zeros(N_M)
-        for _ in range(rng.poisson(OPS_EPISODE_RATE)):          # supply disruption episodes, before the anchored window
-            s, L, mag = rng.integers(0, 17), rng.integers(2, 5), rng.uniform(0.15, 0.40)
-            ops_ep[s:s+L] += mag
-        for _ in range(rng.poisson(ENG_EPISODE_RATE)):          # relationship lapse episodes
-            s, L = rng.integers(0, 17), rng.integers(2, 6)
-            eng_ep[s:s+L] = np.maximum(eng_ep[s:s+L], rng.uniform(0.6, 0.95))
-        bo = np.clip(bo_mu + ops_ep + rng.normal(0, 0.02, N_M), 0, 0.95)
-        slip = np.clip(slip_mu + 0.3 * ops_ep + rng.normal(0, 0.02, N_M), 0, 1)
-        act_rate = np.maximum(act_mu * (1 - eng_ep), 0.02)
-        acts = rng.poisson(act_rate)
-        cases = rng.poisson(0.10 + 2.0 * ops_ep)
-        esc = rng.binomial(cases, np.clip(0.1 + 0.6 * ops_ep, 0, 0.9))
-        hp = rng.binomial(cases, 0.35)
-        # Pain is measured against the account's own normal: only above-normal ops pain or engagement lapses hurt revenue
-        pain_dev = k_ops * np.maximum(0, bo - bo_mu) + k_eng * eng_ep + 0.15 * esc
-        pain_lag = np.array([pain_dev[max(0, m-3):m].mean() if m > 0 else 0 for m in range(N_M)])
-        hit = np.zeros(N_M)
-        for m in range(N_M):                                    # impact persists for months after the episode ends
-            hit[m] = (0.75 * hit[m-1] if m else 0) + 0.25 * pain_lag[m]
-        drift = rng.normal(0, 0.06)
-        season = 0.05 * np.sin(2 * np.pi * (MONTHS.month.values - 3) / 12)
-        rev_target = a.base_rev * np.exp(-effect * hit + drift * (m_idx - 23) / 12 + season + rng.normal(0, noise_sd, N_M))
-        aov_s = a.base_rev / ORDERS_PER_MONTH
-        exp_orders = np.maximum(rev_target / aov_s, 0.05)
-        orders = rng.poisson(exp_orders)
-        revenue = np.where(orders > 0, orders * aov_s * (rev_target / (exp_orders * aov_s)) * rng.uniform(0.8, 1.2, N_M), 0.0)
-        lines = orders * 2 + rng.poisson(orders)
-        slipped = rng.binomial(lines, slip)
-        slip_days = np.array([rng.gamma(2, 3.5, s).sum() if s else 0 for s in slipped]).round()
-        qty = np.round(lines * a.qty_per_line * rng.uniform(0.8, 1.2, N_M)).astype(int)
-        qty_bo = rng.binomial(qty, bo)
-        for m in range(N_M):
-            last_act = MONTHS[m] + pd.Timedelta(days=int(rng.integers(0, 28))) if acts[m] > 0 else pd.NaT
-            rows.append((int(a.customer_shipto_key), MONTHS[m], float(round(revenue[m], 2)), int(orders[m]), int(lines[m]),
-                         int(slipped[m]), int(slip_days[m]), int(qty[m]), int(qty_bo[m]), int(acts[m]), last_act,
-                         int(cases[m]), int(esc[m]), int(hp[m])))
-    cols = ["customer_shipto_key","month_start","revenue","orders","order_lines","lines_slipped","slip_days",
-            "qty_total","qty_backordered","activities","last_activity_date","cases_opened","escalations","high_priority_cases"]
-    return pd.DataFrame(rows, columns=cols)
 
 hist = generate_history(anchors)
 print(f"Generated {len(hist)} account-months for {hist.customer_shipto_key.nunique()} accounts ({hist.month_start.min().date()} to {hist.month_start.max().date()})")

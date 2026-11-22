@@ -1,6 +1,6 @@
-# Run evidence: Unity Catalog governance
+# Run evidence: Unity Catalog: classification, lineage, grants, model registry
 
-Source notebook: `01_data/03_govern_unity_catalog`. Outputs exported 2026-11-22 15:09 UTC from the executed notebook (no images; tables and logs as text).
+Source notebook: `01_data/03_govern_unity_catalog`. Outputs exported 2026-11-22 21:40 UTC from the executed notebook (no images; tables and logs as text).
 
 ## Config
 
@@ -45,50 +45,48 @@ Governing 14 tables in main.ccg_workshop_cdm
 | source | target | written_by | last_seen |
 |---|---|---|---|
 | main.ccg_workshop_cdm.account_deep_insights | main.ccg_workshop_cdm.account_briefing_v2 | NOTEBOOK | 2026-11-22T13:02:29.269Z |
-| main.ccg_workshop_cdm.account_risk_summary | main.ccg_workshop_cdm.account_deep_insights | JOB | 2026-11-22T14:07:59.290Z |
-| main.ccg_workshop_cdm.account_risk_summary | main.ccg_workshop_cdm.account_deep_insights | NOTEBOOK | 2026-11-22T13:00:43.369Z |
-| main.ccg_workshop_cdm.cur_sales_order_header | main.ccg_workshop_cdm.account_deep_insights | NOTEBOOK | 2026-11-22T13:00:43.369Z |
-| main.ccg_workshop_cdm.cur_sales_order_header | main.ccg_workshop_cdm.account_deep_insights | JOB | 2026-11-22T14:07:59.290Z |
-| main.ccg_workshop_cdm.cur_sales_order_line | main.ccg_workshop_cdm.account_deep_insights | JOB | 2026-11-22T14:07:59.290Z |
-| main.ccg_workshop_cdm.cur_sales_order_line | main.ccg_workshop_cdm.account_deep_insights | NOTEBOOK | 2026-11-22T13:00:43.369Z |
-| main.ccg_workshop_cdm.sf_account | main.ccg_workshop_cdm.account_deep_insights | NOTEBOOK | 2026-11-22T13:00:43.369Z |
-| main.ccg_workshop_cdm.sf_account | main.ccg_workshop_cdm.account_deep_insights | JOB | 2026-11-22T14:07:59.290Z |
-| main.ccg_workshop_cdm.sf_cdm_key_mapping | main.ccg_workshop_cdm.account_deep_insights | NOTEBOOK | 2026-11-22T13:00:43.369Z |
-| main.ccg_workshop_cdm.sf_cdm_key_mapping | main.ccg_workshop_cdm.account_deep_insights | JOB | 2026-11-22T14:07:59.290Z |
-| main.ccg_workshop_cdm.customer_360 | main.ccg_workshop_cdm.account_risk_summary | NOTEBOOK | 2026-11-22T13:00:24.183Z |
-| main.ccg_workshop_cdm.customer_360 | main.ccg_workshop_cdm.account_risk_summary | JOB | 2026-11-22T14:07:49.167Z |
-| main.ccg_workshop_cdm.cur_customer_sales_org | main.ccg_workshop_cdm.customer_360 | PIPELINE | 2026-11-22T14:06:09.925Z |
-| main.ccg_workshop_cdm.cur_customer_shipto | main.ccg_workshop_cdm.customer_360 | PIPELINE | 2026-11-22T14:06:09.925Z |
-| main.ccg_workshop_cdm.cur_product | main.ccg_workshop_cdm.customer_360 | PIPELINE | 2026-11-22T14:06:09.925Z |
-| main.ccg_workshop_cdm.cur_sales_order_header | main.ccg_workshop_cdm.customer_360 | PIPELINE | 2026-11-22T14:06:09.925Z |
-| main.ccg_workshop_cdm.cur_sales_order_line | main.ccg_workshop_cdm.customer_360 | PIPELINE | 2026-11-22T14:06:09.925Z |
-| main.ccg_workshop_cdm.cur_shipment_line | main.ccg_workshop_cdm.customer_360 | PIPELINE | 2026-11-22T14:06:09.925Z |
-| main.ccg_workshop_cdm.sf_account | main.ccg_workshop_cdm.customer_360 | PIPELINE | 2026-11-22T14:06:09.925Z |
-| main.ccg_workshop_cdm.sf_case | main.ccg_workshop_cdm.customer_360 | PIPELINE | 2026-11-22T14:06:09.925Z |
-| main.ccg_workshop_cdm.sf_cdm_key_mapping | main.ccg_workshop_cdm.customer_360 | PIPELINE | 2026-11-22T14:06:09.925Z |
-| main.ccg_workshop_cdm.sf_contact | main.ccg_workshop_cdm.customer_360 | PIPELINE | 2026-11-22T14:06:09.925Z |
-| main.ccg_workshop_cdm.sf_opportunity | main.ccg_workshop_cdm.customer_360 | PIPELINE | 2026-11-22T14:06:09.925Z |
-| main.ccg_workshop_cdm.sf_task | main.ccg_workshop_cdm.customer_360 | PIPELINE | 2026-11-22T14:06:09.925Z |
+| main.ccg_workshop_cdm.account_risk_summary | main.ccg_workshop_cdm.account_deep_insights | NOTEBOOK | 2026-11-22T20:15:23.632Z |
+| main.ccg_workshop_cdm.account_risk_summary | main.ccg_workshop_cdm.account_deep_insights | JOB | 2026-11-22T20:30:20.788Z |
+| main.ccg_workshop_cdm.cur_sales_order_header | main.ccg_workshop_cdm.account_deep_insights | JOB | 2026-11-22T20:30:20.788Z |
+| main.ccg_workshop_cdm.cur_sales_order_header | main.ccg_workshop_cdm.account_deep_insights | NOTEBOOK | 2026-11-22T20:15:23.632Z |
+| main.ccg_workshop_cdm.cur_sales_order_line | main.ccg_workshop_cdm.account_deep_insights | JOB | 2026-11-22T20:30:20.788Z |
+| main.ccg_workshop_cdm.cur_sales_order_line | main.ccg_workshop_cdm.account_deep_insights | NOTEBOOK | 2026-11-22T20:15:23.632Z |
+| main.ccg_workshop_cdm.sf_account | main.ccg_workshop_cdm.account_deep_insights | JOB | 2026-11-22T20:30:20.788Z |
+| main.ccg_workshop_cdm.sf_account | main.ccg_workshop_cdm.account_deep_insights | NOTEBOOK | 2026-11-22T20:15:23.632Z |
+| main.ccg_workshop_cdm.sf_cdm_key_mapping | main.ccg_workshop_cdm.account_deep_insights | JOB | 2026-11-22T20:30:20.788Z |
+| main.ccg_workshop_cdm.sf_cdm_key_mapping | main.ccg_workshop_cdm.account_deep_insights | NOTEBOOK | 2026-11-22T20:15:23.632Z |
+| main.ccg_workshop_cdm.customer_360 | main.ccg_workshop_cdm.account_risk_summary | NOTEBOOK | 2026-11-22T20:15:10.308Z |
+| main.ccg_workshop_cdm.customer_360 | main.ccg_workshop_cdm.account_risk_summary | JOB | 2026-11-22T20:30:11.213Z |
+| main.ccg_workshop_cdm.cur_customer_sales_org | main.ccg_workshop_cdm.customer_360 | PIPELINE | 2026-11-22T20:28:40.944Z |
+| main.ccg_workshop_cdm.cur_customer_shipto | main.ccg_workshop_cdm.customer_360 | PIPELINE | 2026-11-22T20:28:40.944Z |
+| main.ccg_workshop_cdm.cur_product | main.ccg_workshop_cdm.customer_360 | PIPELINE | 2026-11-22T20:28:40.944Z |
+| main.ccg_workshop_cdm.cur_sales_order_header | main.ccg_workshop_cdm.customer_360 | PIPELINE | 2026-11-22T20:28:40.944Z |
+| main.ccg_workshop_cdm.cur_sales_order_line | main.ccg_workshop_cdm.customer_360 | PIPELINE | 2026-11-22T20:28:40.944Z |
+| main.ccg_workshop_cdm.cur_shipment_line | main.ccg_workshop_cdm.customer_360 | PIPELINE | 2026-11-22T20:28:40.944Z |
+| main.ccg_workshop_cdm.sf_account | main.ccg_workshop_cdm.customer_360 | PIPELINE | 2026-11-22T20:28:40.944Z |
+| main.ccg_workshop_cdm.sf_case | main.ccg_workshop_cdm.customer_360 | PIPELINE | 2026-11-22T20:28:40.944Z |
+| main.ccg_workshop_cdm.sf_cdm_key_mapping | main.ccg_workshop_cdm.customer_360 | PIPELINE | 2026-11-22T20:28:40.944Z |
+| main.ccg_workshop_cdm.sf_contact | main.ccg_workshop_cdm.customer_360 | PIPELINE | 2026-11-22T20:28:40.944Z |
+| main.ccg_workshop_cdm.sf_opportunity | main.ccg_workshop_cdm.customer_360 | PIPELINE | 2026-11-22T20:28:40.944Z |
+| main.ccg_workshop_cdm.sf_task | main.ccg_workshop_cdm.customer_360 | PIPELINE | 2026-11-22T20:28:40.944Z |
+| main.ccg_workshop_cdm.account_risk_summary | main.ccg_workshop_cdm.mv_customer_360 | PIPELINE | 2026-11-22T20:40:38.977Z |
+| main.ccg_workshop_cdm.account_risk_summary | main.ccg_workshop_cdm.mv_customer_360 | QUERY | 2026-11-22T20:41:55.342Z |
+| main.ccg_workshop_cdm.account_risk_summary | main.ccg_workshop_cdm.mv_customer_360 | NOTEBOOK | 2026-11-22T20:41:23.914Z |
 | main.ccg_workshop_cdm.account_risk_summary | main.ccg_workshop_cdm.mv_customer_360 | DASHBOARD_V3 | 2026-11-22T13:19:29.691Z |
-| main.ccg_workshop_cdm.account_risk_summary | main.ccg_workshop_cdm.mv_customer_360 | QUERY | 2026-11-22T14:46:45.306Z |
-| main.ccg_workshop_cdm.account_risk_summary | main.ccg_workshop_cdm.mv_customer_360 | NOTEBOOK | 2026-11-22T14:04:06.523Z |
-| main.ccg_workshop_cdm.account_risk_summary | main.ccg_workshop_cdm.mv_customer_360 | PIPELINE | 2026-11-22T13:44:33.430Z |
-| main.ccg_workshop_cdm.customer_360 | main.ccg_workshop_cdm.mv_customer_360 | QUERY | 2026-11-22T14:46:45.306Z |
-| main.ccg_workshop_cdm.customer_360 | main.ccg_workshop_cdm.mv_customer_360 | DASHBOARD_V3 | 2026-11-22T13:19:29.691Z |
-| main.ccg_workshop_cdm.customer_360 | main.ccg_workshop_cdm.mv_customer_360 | NOTEBOOK | 2026-11-22T14:04:06.523Z |
-| main.ccg_workshop_cdm.customer_360 | main.ccg_workshop_cdm.mv_customer_360 | PIPELINE | 2026-11-22T13:44:33.430Z |
-| main.ccg_workshop_cdm.account_risk_summary | signal_cockpit_pg.cockpit.account_risk_summary | PIPELINE | 2026-11-22T12:23:27.854Z |
+| main.ccg_workshop_cdm.customer_360 | main.ccg_workshop_cdm.mv_customer_360 | QUERY | 2026-11-22T20:41:55.342Z |
 
-(34 rows)
+(36 rows, first 30 shown)
 
 ```text
-  sf_account               -> customer_360             captured
+sf_account               -> customer_360             captured
   cur_sales_order_line     -> customer_360             captured
   customer_360             -> account_risk_summary     captured
   account_risk_summary     -> account_deep_insights    captured
   account_deep_insights    -> account_briefing_v2      captured
   account_risk_summary     -> mv_customer_360          captured
-  account_risk_summary     -> lakebase synced table    captured
+  account_risk_summary     -> lakebase account_risk_summary captured
+  account_briefing_v2      -> lakebase account_briefing_v2 captured
+  account_deep_insights    -> lakebase account_deep_insights captured
 ```
 
 ## Access: grants, model registry, secret scope
@@ -146,10 +144,9 @@ Governing 14 tables in main.ccg_workshop_cdm
 (16 rows)
 
 ```text
-
-Model main.ccg_workshop_cdm.account_risk_model: 5 versions, champion = v5
+Model main.ccg_workshop_cdm.account_risk_model: 6 versions, champion = v6
   champion tags: {'output': 'probability', 'target': 'revenue_decline_next_6m', 'training_data': 'synthetic_history'}
   champion description: Forward-looking: P(revenue over next 6 months < 60% of trailing 12-month run rate). LogisticRegression on 11 point-in-time features (ccg_risk_features.py). Use predict_proba[:, 1].
 
-Secret scope 'ccg-salesforce' keys (names only, values never printed): ['consumer-key', 'consumer-secret', 'databricks-pat']
+Secret scope 'ccg-salesforce' keys (names only, values never printed): ['consumer-key', 'consumer-secret', 'databricks-pat', 'sf-domain']
 ```
