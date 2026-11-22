@@ -6,8 +6,8 @@ Accounts with `Risk_Score__c` populated: **200**. Two demo accounts read back fr
 
 | account | Risk_Score__c | Risk_Category__c | Last_Risk_Assessment__c | model_version | action_type | first recommendation |
 |---|---|---|---|---|---|---|
-| University of Pittsburgh | 61.7 | High | 2026-11-22T15:00:24.000+0000 | 5 | escalate_ops | 1 |
-| Merck Life Sciences | 43.2 | Medium | 2026-11-22T15:00:24.000+0000 | 5 | escalate_ops | 1 |
+| University of Pittsburgh | 61.7 | High | 2026-11-22T15:00:24.000+0000 | 5 | escalate_ops | 1. The sales rep should prioritize contacting the University of Pittsburgh within 24 hours to address the high backorder rate of 72% and its |
+| Merck Life Sciences | 43.2 | Medium | 2026-11-22T15:00:24.000+0000 | 5 | escalate_ops | 1. The sales rep should prioritize addressing the high Backorder rate (6 mo) of 31% to mitigate potential revenue loss, within 24 hours. |
 
 ## Lakebase matches Delta after the sync
 
