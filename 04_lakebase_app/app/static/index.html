@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Signal 2.0 - Account Risk Cockpit</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel2:#1e222b; --line:#2a2f3a;
+    --ink:#e8eaed; --mute:#9aa3b2;
+    --high:#e5484d; --med:#f5a524; --low:#30a46c; --accent:#5b8def;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  header{padding:18px 24px;border-bottom:1px solid var(--line);display:flex;
+         align-items:baseline;gap:14px;flex-wrap:wrap}
+  h1{font-size:17px;margin:0;font-weight:600;letter-spacing:.2px}
+  .sub{color:var(--mute);font-size:12px}
+  nav{display:flex;gap:4px;padding:0 24px;border-bottom:1px solid var(--line);background:var(--panel)}
+  nav button{background:none;border:none;color:var(--mute);padding:11px 15px;cursor:pointer;
+             font-size:13px;border-bottom:2px solid transparent}
+  nav button.on{color:var(--ink);border-bottom-color:var(--accent)}
+  main{padding:22px 24px;max-width:1500px}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:22px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px}
+  .kpi .lbl{color:var(--mute);font-size:11px;text-transform:uppercase;letter-spacing:.6px}
+  .kpi .val{font-size:25px;font-weight:600;margin-top:5px;font-variant-numeric:tabular-nums}
+  .kpi .note{color:var(--mute);font-size:11px;margin-top:3px}
+  table{width:100%;border-collapse:collapse;background:var(--panel);
+        border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line);font-size:13px}
+  th{color:var(--mute);font-size:11px;text-transform:uppercase;letter-spacing:.5px;
+     background:var(--panel2);font-weight:500}
+  tbody tr:hover{background:var(--panel2);cursor:pointer}
+  tbody tr:last-child td{border-bottom:none}
+  .num{text-align:right;font-variant-numeric:tabular-nums}
+  .pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:600}
+  .High{background:rgba(229,72,77,.16);color:var(--high)}
+  .Medium{background:rgba(245,165,36,.16);color:var(--med)}
+  .Low{background:rgba(48,163,108,.16);color:var(--low)}
+  .st{font-size:11px;color:var(--mute);text-transform:capitalize}
+  .st.accepted{color:var(--low)} .st.dismissed{color:var(--mute)} .st.snoozed{color:var(--med)}
+  .st.new{color:var(--accent);font-weight:600}
+  .filters{display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap}
+  select,input,textarea{background:var(--panel2);color:var(--ink);border:1px solid var(--line);
+         border-radius:6px;padding:6px 9px;font-size:13px;font-family:inherit}
+  button.act{background:var(--accent);color:#fff;border:none;border-radius:6px;
+             padding:7px 13px;cursor:pointer;font-size:13px;font-weight:500}
+  button.act.ghost{background:var(--panel2);color:var(--ink);border:1px solid var(--line)}
+  button.act:disabled{opacity:.5;cursor:default}
+  .drawer{position:fixed;top:0;right:0;width:min(560px,94vw);height:100%;background:var(--panel);
+          border-left:1px solid var(--line);padding:22px;overflow-y:auto;
+          transform:translateX(100%);transition:transform .18s ease;z-index:20}
+  .drawer.open{transform:translateX(0)}
+  .drawer h2{font-size:16px;margin:0 0 3px}
+  .closex{position:absolute;top:16px;right:18px;background:none;border:none;
+          color:var(--mute);font-size:21px;cursor:pointer;line-height:1}
+  .sect{margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}
+  .sect h3{font-size:11px;color:var(--mute);text-transform:uppercase;
+           letter-spacing:.6px;margin:0 0 8px}
+  .rec{background:var(--panel2);border-left:2px solid var(--accent);
+       padding:9px 11px;margin-bottom:7px;border-radius:0 5px 5px 0;font-size:13px}
+  .kv{display:flex;justify-content:space-between;padding:4px 0;font-size:13px}
+  .kv span:first-child{color:var(--mute)}
+  .chat{display:flex;flex-direction:column;height:calc(100vh - 230px);max-width:980px}
+  .msgs{flex:1;overflow-y:auto;padding:4px 2px}
+  .msg{margin-bottom:14px;padding:11px 14px;border-radius:9px;max-width:85%}
+  .msg.me{white-space:pre-wrap}
+  .msg p{margin:0 0 9px} .msg p:last-child{margin-bottom:0}
+  .msg ol.gl,.msg ul.gl{margin:0 0 9px;padding-left:22px}
+  .msg ol.gl li,.msg ul.gl li{margin-bottom:3px}
+  /* Genie result tables: let wide results scroll rather than blow out the bubble. */
+  table.gt{display:block;overflow-x:auto;white-space:nowrap;margin:4px 0 10px;
+           border:1px solid var(--line);border-radius:6px;background:var(--bg)}
+  table.gt th,table.gt td{padding:6px 10px;font-size:12px;border-bottom:1px solid var(--line)}
+  table.gt thead th{background:var(--panel2);position:sticky;top:0}
+  table.gt tbody tr:hover{background:var(--panel2)}
+  table.gt tbody tr:last-child td{border-bottom:none}
+  .msg.me{background:var(--accent);color:#fff;margin-left:auto}
+  /* Answers can carry wide result tables, so let them use the full column. */
+  .msg.ai{background:var(--panel);border:1px solid var(--line);max-width:100%}
+  .msg .meta{font-size:10px;color:var(--mute);margin-top:7px;font-family:ui-monospace,monospace}
+  .msg.me .meta{color:rgba(255,255,255,.75)}
+  details.sql{margin-top:8px}
+  details.sql pre{background:var(--bg);border:1px solid var(--line);border-radius:6px;
+       padding:9px;overflow-x:auto;font-size:11px;margin:5px 0 0}
+  summary{cursor:pointer;font-size:11px;color:var(--mute)}
+  .ask{display:flex;gap:8px;margin-top:12px}
+  .ask input{flex:1}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+  .chip{background:var(--panel2);border:1px solid var(--line);border-radius:999px;
+        padding:4px 11px;font-size:12px;cursor:pointer;color:var(--mute)}
+  .chip:hover{color:var(--ink);border-color:var(--accent)}
+  .empty{color:var(--mute);padding:26px;text-align:center}
+  .flash{display:inline-block;background:rgba(91,141,239,.16);color:var(--accent);
+         padding:1px 7px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.4px}
+  code.mono{font-family:ui-monospace,monospace;font-size:11px;color:var(--mute)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Signal 2.0 - Account Risk Cockpit</h1>
+  <span class="sub">risk worklist served from Lakebase &middot; portfolio from the lakehouse &middot; Genie <span class="flash">FLASH</span></span>
+</header>
+
+<nav>
+  <button class="on" data-tab="work">Worklist</button>
+  <button data-tab="dash">Portfolio dashboard</button>
+  <button data-tab="ask">Ask the data</button>
+  <button data-tab="audit">Audit trail</button>
+  <button data-tab="health">Data paths</button>
+</nav>
+
+<main>
+  <section id="work">
+    <div id="govWarn" hidden style="background:rgba(245,165,36,.1);border:1px solid var(--med);
+         border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:13px">
+      <b style="color:var(--med)">Risk bands are defined in more than one place.</b>
+      <span id="govDetail" class="sub"></span>
+    </div>
+    <div class="kpis" id="kpis"></div>
+    <div class="filters">
+      <select id="fCat">
+        <option value="">All risk bands</option>
+        <option value="High">High only</option>
+        <option value="Medium">Medium only</option>
+        <option value="Low">Low only</option>
+      </select>
+      <select id="fState">
+        <option value="">All alert states</option>
+        <option value="new">Needs action</option>
+        <option value="accepted">Accepted</option>
+        <option value="dismissed">Dismissed</option>
+        <option value="snoozed">Snoozed</option>
+      </select>
+      <span class="sub" id="wlMeta"></span>
+    </div>
+    <table>
+      <thead><tr>
+        <th>Account</th><th class="num">Risk</th><th>Band</th>
+        <th>Primary driver</th><th class="num">Annual rev</th>
+        <th class="num">Days idle</th><th>Alert</th>
+      </tr></thead>
+      <tbody id="wlBody"><tr><td colspan="7" class="empty">Loading...</td></tr></tbody>
+    </table>
+  </section>
+
+  <section id="dash" hidden>
+    <p class="sub" style="margin-top:0">
+      Governed AI/BI dashboard, embedded. Same warehouse, same gold tables as the
+      worklist - one definition of the numbers, two places to read them.
+    </p>
+    <div id="dashWrap" style="border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--panel)">
+      <div class="empty">Loading dashboard...</div>
+    </div>
+  </section>
+
+  <section id="ask" hidden>
+    <div class="chips">
+      <span class="chip">How many accounts are in the High risk category?</span>
+      <span class="chip">Which 5 accounts have the largest revenue at risk?</span>
+      <span class="chip">What is the average risk score by industry?</span>
+      <span class="chip">Show total backorder value by status</span>
+    </div>
+    <div class="chat">
+      <div class="msgs" id="msgs">
+        <div class="empty">Ask a question about the account portfolio.<br>
+          <span class="sub">Runs against your Genie Agent with <span class="flash">FLASH</span> execution mode - speed over reasoning depth, suited to in-workflow questions.</span>
+        </div>
+      </div>
+      <div class="ask">
+        <input id="q" placeholder="e.g. which High-risk accounts have open cases?" autocomplete="off">
+        <button class="act" id="send">Ask</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="audit" hidden>
+    <p class="sub" style="margin-top:0">
+      Every rep decision, append-only. The app's service principal holds
+      <code class="mono">SELECT, INSERT</code> and no
+      <code class="mono">UPDATE/DELETE</code> - enforced by Postgres, not by app code.
+    </p>
+    <table>
+      <thead><tr><th>When</th><th>Event</th><th>Actor</th><th class="num">Action id</th><th>Detail</th></tr></thead>
+      <tbody id="auBody"><tr><td colspan="5" class="empty">Loading...</td></tr></tbody>
+    </table>
+  </section>
+
+  <section id="health" hidden>
+    <p class="sub" style="margin-top:0">Live round-trip against each layer, measured on request.</p>
+    <pre id="hOut" style="background:var(--panel);border:1px solid var(--line);
+         border-radius:8px;padding:16px;overflow-x:auto;font-size:12px">Loading...</pre>
+  </section>
+</main>
+
+<div class="drawer" id="drawer">
+  <button class="closex" onclick="closeDrawer()">&times;</button>
+  <div id="dBody"></div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const money = n => n == null ? '-' : '$' + Number(n).toLocaleString('en-US',{maximumFractionDigits:0});
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+// Minimal, XSS-safe markdown renderer for Genie answers.
+// Escape FIRST, then build tags, so nothing in the model output can inject HTML.
+function renderMd(raw){
+  let t = esc(raw || '');
+  // Genie appends citations like \[[1](https://.../genie/rooms/...)\] - drop them.
+  t = t.replace(/\\?\[\s*\[\d+\]\([^)]*\)\s*\\?\]/g, '');
+  t = t.replace(/\\([\[\]])/g, '$1');
+
+  const inline = s => s
+    .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
+    .replace(/(^|[^*])\*([^*]+)\*(?!\*)/g, '$1<i>$2</i>')
+    .replace(/`([^`]+)`/g, '<code class="mono">$1</code>');
+
+  const out = [];
+  const lines = t.split('\n');
+  let i = 0;
+  while (i < lines.length){
+    const line = lines[i];
+
+    // Markdown table: a header row of pipes followed by a separator row.
+    if (/^\s*\|.*\|\s*$/.test(line) && i + 1 < lines.length &&
+        /^\s*\|[\s:|-]+\|\s*$/.test(lines[i+1])){
+      const cells = r => r.trim().replace(/^\||\|$/g, '').split('|').map(c => c.trim());
+      const head = cells(line);
+      i += 2;
+      const body = [];
+      while (i < lines.length && /^\s*\|.*\|\s*$/.test(lines[i])){
+        body.push(cells(lines[i])); i++;
+      }
+      const numeric = c => /^-?[\d,.]+%?$/.test(c);
+      out.push('<table class="gt"><thead><tr>' +
+        head.map(h => '<th>' + inline(h) + '</th>').join('') +
+        '</tr></thead><tbody>' +
+        body.map(r => '<tr>' + r.map(c =>
+          '<td' + (numeric(c) ? ' class="num"' : '') + '>' + inline(c) + '</td>').join('') + '</tr>').join('') +
+        '</tbody></table>');
+      continue;
+    }
+
+    // Ordered / unordered list runs.
+    if (/^\s*(\d+\.|[-*])\s+/.test(line)){
+      const ordered = /^\s*\d+\./.test(line);
+      const items = [];
+      while (i < lines.length && /^\s*(\d+\.|[-*])\s+/.test(lines[i])){
+        items.push(inline(lines[i].replace(/^\s*(\d+\.|[-*])\s+/, ''))); i++;
+      }
+      out.push('<' + (ordered ? 'ol' : 'ul') + ' class="gl">' +
+        items.map(x => '<li>' + x + '</li>').join('') + '</' + (ordered ? 'ol' : 'ul') + '>');
+      continue;
+    }
+
+    if (line.trim() === ''){ i++; continue; }
+
+    // Plain paragraph - absorb consecutive non-structural lines.
+    const para = [];
+    while (i < lines.length && lines[i].trim() !== '' &&
+           !/^\s*\|/.test(lines[i]) && !/^\s*(\d+\.|[-*])\s+/.test(lines[i])){
+      para.push(lines[i]); i++;
+    }
+    out.push('<p>' + inline(para.join(' ')) + '</p>');
+  }
+  return out.join('');
+}
+
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('on', x === b));
+  ['work','dash','ask','audit','health'].forEach(t => $('#'+t).hidden = (t !== b.dataset.tab));
+  if (b.dataset.tab === 'audit') loadAudit();
+  if (b.dataset.tab === 'health') loadHealth();
+  if (b.dataset.tab === 'dash') loadDashboard();
+});
+
+let dashLoaded = false;
+async function loadDashboard(){
+  if (dashLoaded) return;
+  const c = await (await fetch('/api/config')).json();
+  if (!c.dashboard_id){
+    $('#dashWrap').innerHTML = '<div class="empty">No DASHBOARD_ID configured.</div>';
+    return;
+  }
+  $('#dashWrap').innerHTML = '<iframe src="'+c.host+'/embed/dashboardsv3/'+c.dashboard_id+
+    '" style="width:100%;height:78vh;border:0;display:block"></iframe>';
+  dashLoaded = true;
+}
+
+async function loadGovernance(){
+  const warn = [];
+  try{
+    const g = await (await fetch('/api/governance/band-consistency')).json();
+    if (!g.agreement){
+      warn.push('<b style="color:var(--med)">Risk bands are defined in more than one place.</b> '+
+        g.sources.map(s => esc(s.source)+': <b>'+s.high_accounts+'</b> ('+esc(s.definition)+')').join(' &nbsp;vs&nbsp; '));
+    }
+  }catch(e){ /* non-fatal - never block the worklist on a governance check */ }
+  try{
+    const f = await (await fetch('/api/governance/sync-freshness')).json();
+    if (!f.in_sync){
+      warn.push('<b style="color:var(--med)">Lakebase is stale.</b> Delta has '+
+        f.delta.rows+' rows (score sum '+f.delta.score_sum+'), Lakebase has '+
+        f.lakebase.rows+' ('+f.lakebase.score_sum+'). '+esc(f.note));
+    }
+  }catch(e){ /* non-fatal */ }
+  if (warn.length){
+    $('#govWarn').hidden = false;
+    $('#govWarn').innerHTML = warn.join('<hr style="border:0;border-top:1px solid var(--line);margin:8px 0">');
+  }
+}
+
+async function loadKpis(){
+  const rows = await (await fetch('/api/kpis')).json();
+  const tot = rows.reduce((a,r)=>a+Number(r.accounts),0);
+  const high = rows.find(r=>r.risk_category==='High') || {};
+  const rev  = rows.reduce((a,r)=>a+Number(r.revenue_at_stake||0),0);
+  $('#kpis').innerHTML =
+    '<div class="kpi"><div class="lbl">Accounts scored</div><div class="val">'+tot+'</div>'+
+      '<div class="note">refreshed from the gold layer</div></div>'+
+    '<div class="kpi"><div class="lbl">High risk</div>'+
+      '<div class="val" style="color:var(--high)">'+(high.accounts||0)+'</div>'+
+      '<div class="note">avg score '+(high.avg_score||'-')+'</div></div>'+
+    '<div class="kpi"><div class="lbl">Revenue at stake, high risk</div>'+
+      '<div class="val" style="color:var(--high)">'+money(high.revenue_at_stake)+'</div>'+
+      '<div class="note">annual revenue on High-risk accounts</div></div>'+
+    '<div class="kpi"><div class="lbl">Portfolio revenue</div><div class="val">'+money(rev)+'</div>'+
+      '<div class="note">all '+tot+' accounts</div></div>';
+}
+
+async function loadWorklist(){
+  const cat = $('#fCat').value, st = $('#fState').value;
+  const t0 = performance.now();
+  const qs = new URLSearchParams({limit:'60'});
+  if (cat) qs.set('category', cat);
+  if (st) qs.set('state', st);
+  const rows = await (await fetch('/api/worklist?'+qs)).json();
+  const ms = Math.round(performance.now()-t0);
+  $('#wlMeta').textContent = rows.length+' accounts, '+ms+'ms round trip from Lakebase';
+  $('#wlBody').innerHTML = rows.length ? rows.map(r =>
+    '<tr onclick="openAccount(\'' + r.sf_account_id + '\')">'+
+      '<td>'+esc(r.account_name)+'</td>'+
+      '<td class="num">'+r.ml_risk_score+'</td>'+
+      '<td><span class="pill '+r.risk_category+'">'+r.risk_category+'</span></td>'+
+      '<td class="sub">'+esc(r.top_risk_driver)+'</td>'+
+      '<td class="num">'+money(r.annual_revenue)+'</td>'+
+      '<td class="num">'+r.days_since_last_activity+'</td>'+
+      '<td><span class="st '+r.alert_state+'">'+r.alert_state+'</span></td>'+
+    '</tr>').join('') : '<tr><td colspan="7" class="empty">No accounts match.</td></tr>';
+}
+$('#fCat').onchange = loadWorklist;
+$('#fState').onchange = loadWorklist;
+
+async function openAccount(id){
+  $('#drawer').classList.add('open');
+  $('#dBody').innerHTML = '<div class="empty">Loading...</div>';
+  const d = await (await fetch('/api/account/'+encodeURIComponent(id))).json();
+  const r = d.risk, b = d.briefing || {}, i = d.insights || {};
+  const recs = ['recommendation_1','recommendation_2','recommendation_3']
+      .map(k => b[k]).filter(Boolean);
+  let html =
+    '<h2>'+esc(r.account_name)+'</h2>'+
+    '<div class="sub">'+esc(r.sf_account_id)+'</div>'+
+    '<div class="sect"><h3>Risk</h3>'+
+      '<div class="kv"><span>Score</span><b>'+r.ml_risk_score+
+        ' <span class="pill '+r.risk_category+'">'+r.risk_category+'</span></b></div>'+
+      '<div class="kv"><span>Primary driver</span><b>'+esc(r.top_risk_driver)+'</b></div>'+
+      '<div class="kv"><span>Days since activity</span><b>'+r.days_since_last_activity+'</b></div>'+
+      '<div class="kv"><span>Annual revenue</span><b>'+money(r.annual_revenue)+'</b></div>'+
+      '<div class="kv"><span>Open pipeline</span><b>'+money(r.open_pipeline_value)+'</b></div>'+
+      '<div class="kv"><span>Open cases</span><b>'+r.open_case_count+'</b></div></div>';
+  if (b.action_type){
+    html += '<div class="sect"><h3>AI recommendation</h3>'+
+      '<div class="kv"><span>Action type</span><b>'+esc(b.action_type)+'</b></div>'+
+      '<div class="kv"><span>Urgency</span><b>'+esc(b.urgency == null ? '-' : b.urgency)+'</b></div>'+
+      recs.map(x=>'<div class="rec">'+esc(x)+'</div>').join('')+'</div>';
+  }
+  if (i.revenue_trend_pct != null){
+    html += '<div class="sect"><h3>Deep signals</h3>'+
+      '<div class="kv"><span>Revenue trend (90d vs prior)</span><b>'+i.revenue_trend_pct+'%</b></div>'+
+      '<div class="kv"><span>vs industry avg risk</span><b>'+(i.peer_risk_delta == null ? '-' : i.peer_risk_delta)+'</b></div></div>';
+  }
+  html += '<div class="sect"><h3>Act on this alert</h3>'+
+    '<textarea id="disp" rows="2" style="width:100%" placeholder="What did you decide? (optional)"></textarea>'+
+    '<div style="display:flex;gap:7px;margin-top:9px">'+
+      '<button class="act" onclick="act(\''+r.sf_account_id+'\',\''+esc(r.account_name).replace(/'/g,"\\'")+'\','+r.ml_risk_score+',\'accepted\')">Accept</button>'+
+      '<button class="act ghost" onclick="act(\''+r.sf_account_id+'\',\''+esc(r.account_name).replace(/'/g,"\\'")+'\','+r.ml_risk_score+',\'snoozed\')">Snooze</button>'+
+      '<button class="act ghost" onclick="act(\''+r.sf_account_id+'\',\''+esc(r.account_name).replace(/'/g,"\\'")+'\','+r.ml_risk_score+',\'dismissed\')">Dismiss</button>'+
+    '</div><div id="actMsg" class="sub" style="margin-top:9px"></div></div>';
+  if (d.history.length){
+    html += '<div class="sect"><h3>Decision history</h3>'+
+      d.history.map(h=>'<div class="kv"><span>'+esc(h.action)+' - '+esc(h.rep_email)+'</span>'+
+        '<span class="sub">'+new Date(h.created_at).toLocaleString()+'</span></div>'+
+        (h.disposition?'<div class="rec">'+esc(h.disposition)+'</div>':'')).join('')+'</div>';
+  }
+  $('#dBody').innerHTML = html;
+}
+function closeDrawer(){ $('#drawer').classList.remove('open'); }
+
+async function act(id, name, score, action){
+  $('#actMsg').textContent = 'Writing...';
+  const res = await fetch('/api/action', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({sf_account_id:id, account_name:name, action:action,
+      disposition: $('#disp').value || null, risk_score_seen: score})
+  });
+  const j = await res.json();
+  $('#actMsg').innerHTML = res.ok
+    ? 'Committed to Lakebase - <code class="mono">rep_actions.action_id='+j.action_id+'</code>, '+
+      '<code class="mono">action_audit.audit_id='+j.audit_id+'</code> in one transaction.'
+    : 'Failed: '+esc(j.detail || 'unknown');
+  if (res.ok) loadWorklist();
+}
+
+let convId = null;
+document.querySelectorAll('.chip').forEach(c => c.onclick = () => { $('#q').value = c.textContent; ask(); });
+$('#send').onclick = ask;
+$('#q').onkeydown = e => { if (e.key === 'Enter') ask(); };
+
+async function ask(){
+  const q = $('#q').value.trim();
+  if (!q) return;
+  $('#q').value = ''; $('#send').disabled = true;
+  const m = $('#msgs');
+  if (m.querySelector('.empty')) m.innerHTML = '';
+  m.insertAdjacentHTML('beforeend', '<div class="msg me">'+esc(q)+'</div>');
+  const pending = document.createElement('div');
+  pending.className = 'msg ai'; pending.textContent = 'Thinking...';
+  m.appendChild(pending); m.scrollTop = m.scrollHeight;
+  try{
+    const r = await (await fetch('/api/genie/ask', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({question:q, conversation_id:convId})
+    })).json();
+    convId = r.conversation_id || convId;
+    pending.innerHTML = renderMd(r.answer)+
+      '<div class="meta">execution_mode='+esc(r.execution_mode)+', '+r.elapsed_ms+'ms</div>'+
+      (r.sql||[]).filter(Boolean).map(s=>'<details class="sql">'+
+        '<summary>SQL Genie ran</summary><pre>'+esc(s)+'</pre></details>').join('');
+  }catch(e){
+    pending.textContent = 'Error: ' + e.message;
+  }
+  $('#send').disabled = false; m.scrollTop = m.scrollHeight;
+}
+
+async function loadAudit(){
+  const rows = await (await fetch('/api/audit')).json();
+  $('#auBody').innerHTML = rows.length ? rows.map(r=>
+    '<tr><td class="sub">'+new Date(r.occurred_at).toLocaleString()+'</td>'+
+      '<td>'+esc(r.event)+'</td><td class="sub">'+esc(r.actor)+'</td>'+
+      '<td class="num">'+(r.action_id == null ? '-' : r.action_id)+'</td>'+
+      '<td class="sub">'+esc((r.payload && (r.payload.disposition || r.payload.account_name)) || '')+'</td></tr>').join('')
+    : '<tr><td colspan="5" class="empty">No actions recorded yet.</td></tr>';
+}
+
+async function loadHealth(){
+  $('#hOut').textContent = 'Loading...';
+  try{
+    const h = await (await fetch('/api/health')).json();
+    $('#hOut').textContent = JSON.stringify(h, null, 2);
+  }catch(e){ $('#hOut').textContent = 'Error: ' + e.message; }
+}
+
+loadKpis(); loadWorklist(); loadGovernance();
+</script>
+</body>
+</html>

@@ -1,0 +1,224 @@
+<apex:page standardController="Account" lightningStylesheets="true" showHeader="false" sidebar="false">
+<apex:slds />
+<style>
+    .signal-wrap { font-family: 'Salesforce Sans', Arial, sans-serif; height: 100%; }
+    .signal-hdr { background: linear-gradient(135deg, #1B2A4A 0%, #2D4A7A 100%); color: white; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; }
+    .signal-hdr h1 { font-size: 18px; font-weight: 700; margin: 0; letter-spacing: 0.5px; }
+    .signal-hdr .acct { font-size: 12px; opacity: 0.8; }
+    .score-pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 20px; font-weight: 700; font-size: 14px; color: white; }
+    .pill-high { background: #D32F2F; }
+    .pill-medium { background: #F57C00; }
+    .pill-low { background: #388E3C; }
+    .pill-none { background: #999; }
+    .tab-bar { display: flex; background: #f4f6f9; border-bottom: 2px solid #e0e5ee; }
+    .tab-btn { padding: 10px 24px; font-size: 14px; font-weight: 600; color: #607d8b; cursor: pointer; border: none; background: none; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
+    .tab-btn.active { color: #1a3a5c; border-bottom-color: #1a3a5c; background: #fff; }
+    .tab-btn:hover { color: #1a3a5c; }
+    .tab-content { display: none; width: 100%; height: 600px; border: none; background: #fff; }
+    .tab-content.active { display: block; }
+    .powered { font-size: 10px; color: #bbb; padding: 6px 20px; background: #f9f9f9; }
+    /* Popup overlay */
+    .popup-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.55); z-index: 9999; display: flex; align-items: center; justify-content: center; }
+    .popup-card { background: #fff; border-radius: 12px; width: 520px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: popIn 0.3s ease; }
+    @keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .popup-hdr { background: linear-gradient(135deg, #1B2A4A, #2D4A7A); color: white; padding: 20px 24px; border-radius: 12px 12px 0 0; }
+    .popup-hdr h2 { margin: 0 0 4px 0; font-size: 18px; font-weight: 700; }
+    .popup-hdr .sub { font-size: 12px; opacity: 0.8; }
+    .popup-body { padding: 20px 24px; }
+    .popup-body .action-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+    .action-badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; background: #e3f2fd; color: #1565c0; }
+    .conf-badge { font-size: 11px; color: #888; }
+    /* NEW: Insight cards */
+    .insight-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+    .insight-card { background: #f8f9fa; border-radius: 8px; padding: 10px 14px; border-left: 3px solid #ccc; }
+    .insight-card .label { font-size: 10px; text-transform: uppercase; color: #888; font-weight: 600; letter-spacing: 0.5px; }
+    .insight-card .value { font-size: 18px; font-weight: 700; margin-top: 2px; }
+    .insight-card.danger { border-left-color: #D32F2F; }
+    .insight-card.danger .value { color: #D32F2F; }
+    .insight-card.warning { border-left-color: #F57C00; }
+    .insight-card.warning .value { color: #F57C00; }
+    .insight-card.success { border-left-color: #388E3C; }
+    .insight-card.success .value { color: #388E3C; }
+    .insight-card.info { border-left-color: #1565c0; }
+    .insight-card.info .value { color: #1565c0; }
+    .urgency-bar { height: 6px; border-radius: 3px; background: #eee; margin: 8px 0 4px 0; }
+    .urgency-fill { height: 100%; border-radius: 3px; transition: width 0.5s; }
+    .urgency-label { font-size: 11px; color: #888; }
+    .exec-banner { background: #fff3e0; border: 1px solid #ffe0b2; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 13px; color: #e65100; font-weight: 600; }
+    .rec-list { list-style: none; padding: 0; margin: 0 0 16px 0; }
+    .rec-list li { display: flex; gap: 10px; margin-bottom: 10px; font-size: 13px; line-height: 1.5; color: #333; }
+    .rec-num { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: white; flex-shrink: 0; }
+    .rec-1 { background: #D32F2F; } .rec-2 { background: #F57C00; } .rec-3 { background: #388E3C; }
+    .dismiss-btn { width: 100%; padding: 12px; border: none; border-radius: 8px; background: linear-gradient(135deg, #1B2A4A, #2D4A7A) !important; color: white !important; font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+    .dismiss-btn:hover { opacity: 0.9; }
+</style>
+
+<div class="signal-wrap">
+    <!-- POPUP OVERLAY -->
+    <div class="popup-overlay" id="briefingPopup">
+        <div class="popup-card">
+            <div class="popup-hdr">
+                <h2>Signal 2.0 Morning Briefing</h2>
+                <div class="sub" id="popupAcct"></div>
+            </div>
+            <div class="popup-body">
+                <div class="action-row">
+                    <span class="score-pill" id="popupPill"></span>
+                    <span class="action-badge" id="popupAction"></span>
+                    <span class="conf-badge" id="popupConf"></span>
+                </div>
+
+                <!-- NEW: Deep Insight Cards -->
+                <div class="insight-grid" id="insightGrid"></div>
+
+                <!-- Urgency -->
+                <div>
+                    <div class="urgency-bar"><div class="urgency-fill" id="urgencyFill"></div></div>
+                    <div class="urgency-label" id="urgencyLabel"></div>
+                </div>
+
+                <!-- Exec attention -->
+                <div id="execBanner" class="exec-banner" style="display:none;"></div>
+
+                <!-- Recommendations -->
+                <ul class="rec-list" id="recList"></ul>
+
+                <button class="dismiss-btn" onclick="dismissPopup()">Got it - Show Dashboard</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- HEADER -->
+    <div class="signal-hdr">
+        <div>
+            <h1>Signal 2.0</h1>
+            <div class="acct">{!Account.Name}</div>
+        </div>
+        <span class="score-pill" id="hdrPill"></span>
+    </div>
+
+    <!-- TABS -->
+    <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchTab('dash',this)">Risk Dashboard</button>
+        <button class="tab-btn" onclick="switchTab('genie',this)">Genie Agent</button>
+    </div>
+    <iframe id="dash" class="tab-content active" src="https://adb-984752964297111.11.azuredatabricks.net/embed/dashboardsv3/01f1a72dc5a713608e84a6d9c8eff268"></iframe>
+    <iframe id="genie" class="tab-content" data-src="https://adb-984752964297111.11.azuredatabricks.net/embed/genie/rooms/01f19c88f94816f3808eef719283e510"></iframe>
+    <div class="powered">Powered by Databricks AI/BI</div>
+</div>
+
+<script>
+var rawDesc = '{!JSENCODE(Account.Description)}';
+var briefing = {};
+try { briefing = JSON.parse(rawDesc); } catch(e) {}
+
+// Populate popup
+var acctName = '{!JSENCODE(Account.Name)}';
+document.getElementById('popupAcct').textContent = acctName;
+
+// Risk pill
+var score = briefing.risk_score || 0;
+var cat = briefing.risk_category || 'Unknown';
+var pillClass = cat === 'High' ? 'pill-high' : cat === 'Medium' ? 'pill-medium' : cat === 'Low' ? 'pill-low' : 'pill-none';
+document.getElementById('popupPill').className = 'score-pill ' + pillClass;
+document.getElementById('popupPill').textContent = Math.round(score) + ' ' + cat;
+document.getElementById('hdrPill').className = 'score-pill ' + pillClass;
+document.getElementById('hdrPill').textContent = Math.round(score) + ' ' + cat;
+
+// Action badge
+var action = (briefing.action_type || '').replace(/_/g, ' ');
+document.getElementById('popupAction').textContent = action.charAt(0).toUpperCase() + action.slice(1);
+var conf = briefing.action_confidence || 0;
+document.getElementById('popupConf').textContent = Math.round(conf * 100) + '% confidence';
+
+// NEW: Deep Insight Cards
+var grid = document.getElementById('insightGrid');
+var cards = [];
+
+// Revenue trend
+var revTrend = briefing.rev_trend_pct;
+if (revTrend !== null && revTrend !== undefined) {
+    var trendClass = revTrend <= -20 ? 'danger' : revTrend >= 20 ? 'success' : 'warning';
+    var trendSign = revTrend > 0 ? '+' : '';
+    cards.push({label: 'Revenue Trend (90d)', value: trendSign + revTrend.toFixed(1) + '%', cls: trendClass});
+}
+
+// Revenue at risk
+var revAtRisk = briefing.revenue_at_risk;
+if (revAtRisk && revAtRisk > 0) {
+    var riskClass = revAtRisk >= 1000000 ? 'danger' : revAtRisk >= 100000 ? 'warning' : 'info';
+    var formatted = revAtRisk >= 1000000 ? '$' + (revAtRisk/1000000).toFixed(1) + 'M' : '$' + Math.round(revAtRisk/1000).toLocaleString() + 'K';
+    cards.push({label: 'Revenue at Risk', value: formatted, cls: riskClass});
+}
+
+// Peer benchmark
+var vsIndustry = briefing.risk_vs_industry;
+if (vsIndustry !== null && vsIndustry !== undefined) {
+    var peerClass = vsIndustry > 10 ? 'danger' : vsIndustry < -10 ? 'success' : 'info';
+    var peerSign = vsIndustry > 0 ? '+' : '';
+    var ind = briefing.industry || 'peers';
+    cards.push({label: 'vs ' + ind + ' Avg', value: peerSign + vsIndustry.toFixed(1) + ' pts', cls: peerClass});
+}
+
+// Delivery reliability
+var delPushed = briefing.delivery_pushed_pct;
+if (delPushed && delPushed > 0) {
+    var delClass = delPushed > 95 ? 'danger' : delPushed > 90 ? 'warning' : 'success';
+    cards.push({label: 'Deliveries Pushed', value: delPushed.toFixed(1) + '%', cls: delClass});
+}
+
+for (var i = 0; i < cards.length; i++) {
+    var c = cards[i];
+    var div = document.createElement('div');
+    div.className = 'insight-card ' + c.cls;
+    div.innerHTML = '<div class="label">' + c.label + '</div><div class="value">' + c.value + '</div>';
+    grid.appendChild(div);
+}
+
+// Urgency
+var urgency = briefing.urgency_score || 0;
+var urgPct = Math.min(100, (urgency / 4) * 100);
+var urgColor = urgency >= 3 ? '#D32F2F' : urgency >= 2 ? '#F57C00' : urgency >= 1 ? '#FDD835' : '#388E3C';
+document.getElementById('urgencyFill').style.width = urgPct + '%';
+document.getElementById('urgencyFill').style.background = urgColor;
+var urgLabels = ['Routine','Low','Medium','High','Critical'];
+document.getElementById('urgencyLabel').textContent = 'Urgency: ' + urgency.toFixed(1) + '/4 (' + urgLabels[Math.min(4, Math.round(urgency))] + ')';
+
+// Exec attention
+var execProb = briefing.exec_attention_prob || 0;
+if (execProb >= 0.5) {
+    document.getElementById('execBanner').style.display = 'block';
+    document.getElementById('execBanner').textContent = 'Executive attention recommended (' + Math.round(execProb * 100) + '% probability)';
+}
+
+// Recommendations
+var recs = (briefing.recommendations || '').split(/\d+\.\s*/);
+var recList = document.getElementById('recList');
+var recIdx = 0;
+for (var r = 0; r < recs.length; r++) {
+    var txt = recs[r].trim();
+    if (!txt) continue;
+    recIdx++;
+    if (recIdx > 3) break;
+    var li = document.createElement('li');
+    li.innerHTML = '<span class="rec-num rec-' + recIdx + '">' + recIdx + '</span><span>' + txt + '</span>';
+    recList.appendChild(li);
+}
+
+function dismissPopup() {
+    var pop = document.getElementById('briefingPopup');
+    pop.style.opacity = '0';
+    pop.style.transition = 'opacity 0.3s';
+    setTimeout(function(){ pop.style.display = 'none'; }, 300);
+}
+
+function switchTab(id, btn) {
+    document.querySelectorAll('.tab-content').forEach(function(el){ el.classList.remove('active'); });
+    document.querySelectorAll('.tab-btn').forEach(function(el){ el.classList.remove('active'); });
+    document.getElementById(id).classList.add('active');
+    btn.classList.add('active');
+    var iframe = document.getElementById(id);
+    if (iframe.dataset.src && !iframe.src) { iframe.src = iframe.dataset.src; }
+}
+</script>
+</apex:page>

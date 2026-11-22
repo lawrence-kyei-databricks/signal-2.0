@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Read and edit the Signal 2.0 risk fields written by the Databricks reverse ETL. Assign to the integration user and to reps who should see the fields.</description>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Account.Risk_Score__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Account.Risk_Category__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Account.Last_Risk_Assessment__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>Signal 2.0 Risk Fields</label>
+</PermissionSet>

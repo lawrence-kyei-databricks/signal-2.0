@@ -1,0 +1,305 @@
+version: 1.1
+
+source: |-
+  SELECT c.*, r.ml_risk_score, r.risk_category AS ml_risk_category, r.risk_probability,
+         r.days_since_last_activity AS days_inactive_at_snapshot, r.model_version, r.snapshot_date
+  FROM main.ccg_workshop_cdm.customer_360 c LEFT JOIN main.ccg_workshop_cdm.account_risk_summary r ON c.sf_account_id = r.sf_account_id
+
+comment: Customer 360 risk intelligence - unified CRM + order health metrics for Compass
+  2.0 demo
+
+dimensions:
+  - name: Account Name
+    expr: account_name
+    comment: Salesforce account name
+    display_name: Account Name
+    synonyms:
+      - customer
+      - client
+      - account
+
+  - name: Industry
+    expr: industry
+    comment: "Industry classification (Academic, Pharma, Biotech, etc.)"
+    display_name: Industry
+    synonyms:
+      - sector
+      - vertical
+      - segment
+
+  - name: Region
+    expr: region
+    comment: "Sales region (CENTRAL, NORTHEAST, SOUTH, EAST, WEST)"
+    display_name: Region
+    synonyms:
+      - territory
+      - area
+      - geography
+
+  - name: Business Unit
+    expr: business_unit
+    comment: "Business unit (Clinical Diagnostics, Laboratory Products, Chromatography,\
+      \ Research Chemicals)"
+    display_name: Business Unit
+    synonyms:
+      - BU
+      - division
+      - product line
+
+  - name: Rep Name
+    expr: rep_name
+    comment: Assigned sales representative
+    display_name: Sales Rep
+    synonyms:
+      - representative
+      - salesperson
+      - rep
+      - AE
+
+  - name: Manager Name
+    expr: manager_name
+    comment: Sales manager overseeing the account
+    display_name: Sales Manager
+    synonyms:
+      - manager
+      - supervisor
+
+  - name: Risk Category
+    expr: ml_risk_category
+    comment: "Model risk bucket from account_risk_model@champion - High (score >=\
+      \ 50), Medium (25-50), Low (< 25)"
+    display_name: Risk Category
+    synonyms:
+      - risk level
+      - risk tier
+      - health
+      - risk bucket
+
+  - name: Is Stale
+    expr: days_inactive_at_snapshot > 90
+    comment: True if no CRM activity in the 90+ days before the data snapshot date
+    display_name: Stale Account
+    synonyms:
+      - inactive
+      - dormant
+      - no recent activity
+
+  - name: Has Escalations
+    expr: has_escalated_cases
+    comment: True if account has escalated support cases
+    display_name: Has Escalated Cases
+    synonyms:
+      - escalated
+      - escalation flag
+
+  - name: Has Backorders
+    expr: has_backorders
+    comment: True if account has backordered line items
+    display_name: Has Backorders
+    synonyms:
+      - backordered
+      - backorder flag
+
+  - name: Product Families
+    expr: product_family_list
+    comment: Comma-separated list of product types purchased
+    display_name: Product Families Purchased
+    synonyms:
+      - products
+      - product mix
+      - product coverage
+
+measures:
+  - name: Account Count
+    expr: COUNT(1)
+    comment: Total number of accounts
+    display_name: Accounts
+    synonyms:
+      - number of accounts
+      - customer count
+
+  - name: Total Annual Revenue
+    expr: SUM(annual_revenue)
+    comment: Sum of annual revenue
+    display_name: Annual Revenue
+    synonyms:
+      - revenue
+      - annual revenue
+      - sales
+
+  - name: Avg Risk Score
+    expr: AVG(ml_risk_score)
+    comment: "Average model risk score: 100 x probability that next-6-month revenue\
+      \ falls below 60% of run rate"
+    display_name: Avg Risk Score
+    synonyms:
+      - risk score
+      - risk
+      - health score
+
+  - name: Avg Days Since Activity
+    expr: AVG(CAST(days_inactive_at_snapshot AS DOUBLE))
+    comment: "Average days since last CRM activity, as of the data snapshot date"
+    display_name: Avg Days Inactive
+    synonyms:
+      - activity gap
+      - staleness
+      - days since contact
+
+  - name: Total Pipeline
+    expr: SUM(open_pipeline_value)
+    comment: Total open opportunity pipeline value
+    display_name: Open Pipeline
+    synonyms:
+      - pipeline
+      - pipeline value
+      - open opps
+
+  - name: Total Closed Won
+    expr: SUM(total_closed_won)
+    comment: Total closed-won opportunity revenue
+    display_name: Closed Won
+    synonyms:
+      - won revenue
+      - closed won
+      - booked
+
+  - name: Total Closed Lost
+    expr: SUM(total_closed_lost)
+    comment: Total closed-lost opportunity revenue
+    display_name: Closed Lost
+    synonyms:
+      - lost revenue
+      - closed lost
+
+  - name: Win Rate
+    expr: "SUM(total_closed_won) / NULLIF(SUM(total_closed_won) + SUM(total_closed_lost),\
+      \ 0) * 100"
+    comment: Closed-won as pct of all closed opportunities - composed measure
+    display_name: Win Rate %
+    synonyms:
+      - win rate
+      - close rate
+      - conversion
+
+  - name: Open Cases
+    expr: SUM(open_case_count)
+    comment: Total open support cases
+    display_name: Open Cases
+    synonyms:
+      - cases
+      - support cases
+      - open tickets
+
+  - name: Escalated Cases
+    expr: SUM(escalated_case_count)
+    comment: Total escalated support cases
+    display_name: Escalated Cases
+    synonyms:
+      - escalations
+      - escalated tickets
+
+  - name: Total Orders
+    expr: SUM(total_orders)
+    comment: Total sales order count
+    display_name: Orders
+    synonyms:
+      - order count
+      - number of orders
+
+  - name: Total Order Value
+    expr: SUM(total_order_value)
+    comment: Total order value from CDM
+    display_name: Order Value
+    synonyms:
+      - order revenue
+      - order total
+
+  - name: Backorder Lines
+    expr: SUM(backorder_line_count)
+    comment: Total backordered line items
+    display_name: Backorder Lines
+    synonyms:
+      - backorders
+      - backordered items
+
+  - name: Avg Backorder Pct
+    expr: AVG(CAST(pct_qty_backordered AS DOUBLE))
+    comment: Average pct of quantity backordered per account
+    display_name: Avg Backorder %
+    synonyms:
+      - backorder rate
+      - backorder percentage
+
+  - name: Avg Product Coverage
+    expr: AVG(CAST(product_families_purchased AS DOUBLE))
+    comment: Average distinct product families purchased - 8 max
+    display_name: Avg Product Families
+    synonyms:
+      - product breadth
+      - cross-sell coverage
+
+  - name: At Risk Accounts
+    expr: COUNT(1) FILTER (WHERE ml_risk_category = 'High')
+    comment: Accounts the model rates High risk (score >= 50)
+    display_name: At-Risk Accounts
+    synonyms:
+      - high risk accounts
+      - accounts at risk
+
+  - name: Stale Accounts
+    expr: COUNT(1) FILTER (WHERE days_inactive_at_snapshot > 90)
+    comment: Accounts with no activity in the 90+ days before the data snapshot date
+    display_name: Stale Accounts
+    synonyms:
+      - inactive accounts
+      - dormant accounts
+
+  - name: Revenue At Risk
+    expr: SUM(annual_revenue * risk_probability)
+    comment: Expected annual revenue at risk - annual revenue x model probability
+      of decline
+    display_name: Revenue At Risk
+    synonyms:
+      - at risk revenue
+      - endangered revenue
+
+  - name: Total Contacts
+    expr: SUM(total_contacts)
+    comment: Total CRM contacts across accounts
+    display_name: Contacts
+    synonyms:
+      - contact count
+      - people
+
+materialization:
+  schedule: EVERY 6 HOURS
+  mode: relaxed
+  materialized_views:
+    - name: baseline_flat
+      type: unaggregated
+    - name: by_industry_region
+      type: aggregated
+      dimensions:
+        - Industry
+        - Region
+      measures:
+        - Account Count
+        - Total Annual Revenue
+        - Avg Risk Score
+        - Total Pipeline
+        - Backorder Lines
+        - At Risk Accounts
+        - Revenue At Risk
+    - name: by_rep
+      type: aggregated
+      dimensions:
+        - Rep Name
+        - Business Unit
+      measures:
+        - Account Count
+        - Total Annual Revenue
+        - Avg Risk Score
+        - Total Pipeline
+        - Open Cases
+        - At Risk Accounts

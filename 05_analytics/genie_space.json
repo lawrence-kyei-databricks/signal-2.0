@@ -1,0 +1,1116 @@
+{
+  "title": "Signal 2.0 - CCG Commercial & Customer Intelligence",
+  "description": "# Genie Agent Description\n\nThis Agent answers questions about **commercial effectiveness**, **marketing funnel performance**, **backorder management**, and **customer 360 risk intelligence** for CCG sourcing, sales, and analytics users. It uses four metric views:\n\n**mv_customer_360** \u2014 Unified Salesforce CRM + CDM account health. Use for:\n- Account risk scores (ML-predicted 0-100): High (>=50), Medium (25-49), Low (<25)\n- Account staleness (days since last Salesforce activity, stale = 90+ days)\n- Open pipeline, closed won/lost, win rate per account\n- Backorder exposure (line count, qty, % backordered)\n- Product coverage (8 product families), cases, contacts\n- Sales rep and manager performance rollup\n- Revenue at risk, stale accounts, at-risk accounts\n\nUse MEASURE() syntax for: Account Count, Total Annual Revenue, Avg Risk Score, Avg Days Since Activity, Total Pipeline, Total Closed Won, Total Closed Lost, Win Rate, Open Cases, Escalated Cases, Total Orders, Total Order Value, Backorder Lines, Avg Backorder Pct, Avg Product Coverage, At Risk Accounts, Stale Accounts, Revenue At Risk, Total Contacts.\n\n**mv_commercial_effectiveness** \u2014 CRM pipeline and sales performance data. Use for:\n- Pipeline value, weighted pipeline, commit and best-case pipeline\n- Closed-won revenue (bookings), closed-lost value\n- Win rate, average deal size, average sales cycle\n- Sales rep performance, territory performance, quota tracking\n- Regional analysis (AMER, EMEA, APAC, LATAM)\n- Product line and business line performance\n- Lead source and campaign effectiveness\n- Competitive win/loss analysis by reason category\n- Account tier segmentation (Strategic, Enterprise, Mid-Market, SMB)\n\nUse MEASURE() syntax for: Pipeline Value, Weighted Pipeline, Closed Won Revenue, Closed Lost Value, Deal Count, Open Deals, Won Deals, Lost Deals, Win Rate, Avg Deal Size, Avg Sales Cycle, Commit Pipeline, Best Case Pipeline.\n\n**mv_marketing_funnel** \u2014 Lead generation and conversion data. Use for:\n- Lead volume by source (Web, OEM, Distributor, Partner, Trade Show, Referral, Outbound)\n- Lead conversion rates and disqualification analysis\n- Time to convert (lead velocity)\n- Estimated project value from leads\n- Lead quality (Hot, Warm, Cold ratings)\n- Marketing channel attribution and ROI\n- SDR/owner performance\n\nUse MEASURE() syntax for: Total Leads, Converted Leads, Conversion Rate, Avg Days to Convert, Total Estimated Value, Converted Value, Avg Lead Value, Disqualified Leads, Disqualification Rate.\n\n**mv_backorders** \u2014 Backorder and order health data. Use for:\n- Backorder quantities, backorder sales, line counts\n- Order status, plant performance, supplier analysis\n- Customer backorder impact\n\nUse Backorder Sales for revenue and backorder_qty for backorder volume. Use the metric view measures when the question asks for Backorder Sales, backorder count, or Line count.",
+  "warehouse_id": "148ccb90800933a1",
+  "serialized_space": {
+    "version": 2,
+    "config": {
+      "sample_questions": [
+        {
+          "id": "01f1a78d2ed019a9bd6d8e56aba65e10",
+          "question": [
+            "What is the total pipeline value by region?"
+          ]
+        },
+        {
+          "id": "01f1a78d2eea1335859da036e57c09d8",
+          "question": [
+            "What is the win rate by sales team?"
+          ]
+        },
+        {
+          "id": "01f1a78d2eff1e0a84e9dc02905dc80e",
+          "question": [
+            "Show closed-won revenue by product line for each quarter"
+          ]
+        },
+        {
+          "id": "01f1a78d2f151eafbe2aca29bf63d363",
+          "question": [
+            "Who are the top 10 sales reps by closed-won revenue?"
+          ]
+        },
+        {
+          "id": "01f1a78d2f2c1a8d8d997c24425a9a62",
+          "question": [
+            "Which territories are behind on quota attainment?"
+          ]
+        },
+        {
+          "id": "01f1a78d2f421872bf88ff705320460a",
+          "question": [
+            "What is the commit and best-case pipeline by region?"
+          ]
+        },
+        {
+          "id": "01f1a78d2f5812e6aed096cecfaefe51",
+          "question": [
+            "What is the average deal size by account tier?"
+          ]
+        },
+        {
+          "id": "01f1a78d2f6d1badb198952158a3b8d9",
+          "question": [
+            "What are the top win/loss reasons for closed-lost deals?"
+          ]
+        },
+        {
+          "id": "01f1a78d2f8517f685f279a63eb79e46",
+          "question": [
+            "Which product lines have the longest average sales cycle?"
+          ]
+        },
+        {
+          "id": "01f1a78d2f9b170a83f6b5179040c333",
+          "question": [
+            "Which lead sources generate the most closed-won revenue?"
+          ]
+        },
+        {
+          "id": "01f1ab820cba16cbb44612eb93362556",
+          "question": [
+            "How many leads were generated by each lead source?"
+          ]
+        },
+        {
+          "id": "01f1ab820cd01a079bb75cb280de8d25",
+          "question": [
+            "What is the conversion rate by lead rating?"
+          ]
+        },
+        {
+          "id": "01f1ab820ce61b5b9d954f595801bd93",
+          "question": [
+            "Which industries have the highest lead-to-opportunity conversion rate?"
+          ]
+        },
+        {
+          "id": "01f1ab820cfe1b819c38ae3811ad5b14",
+          "question": [
+            "What is the average days to convert by lead source?"
+          ]
+        },
+        {
+          "id": "01f1ab820d1518ef8da7c9b99cce40d8",
+          "question": [
+            "Show disqualification reasons and their frequency"
+          ]
+        },
+        {
+          "id": "01f1ab820d2b1b89a72c4775e2b39efe",
+          "question": [
+            "Which assigned owners have the most converted leads?"
+          ]
+        },
+        {
+          "id": "01f1ab820d421c14b728863f792b0e2d",
+          "question": [
+            "What is the total estimated value of leads by product interest?"
+          ]
+        },
+        {
+          "id": "01f1ab820d5a1bd1bee02a768943f159",
+          "question": [
+            "What are total backorder sales by supplier?"
+          ]
+        },
+        {
+          "id": "01f1ab820d711474a91e83cbd40bc301",
+          "question": [
+            "Which plants have the most backordered lines?"
+          ]
+        },
+        {
+          "id": "01f1ab820d8812f3a015e2192c171910",
+          "question": [
+            "Show backorder quantity trends over time"
+          ]
+        },
+        {
+          "id": "01f1ab820da615e8be04ab1b28200971",
+          "question": [
+            "Which customers are most impacted by backorders?"
+          ]
+        },
+        {
+          "id": "01f1ab820dbe19ef864ab530cc674d27",
+          "question": [
+            "What is the backorder aging distribution?"
+          ]
+        },
+        {
+          "id": "01f1bd43d341127ea591e4d6e0cd10a6",
+          "question": [
+            "Which accounts have the highest risk scores and why?"
+          ]
+        },
+        {
+          "id": "01f1bd43d37011088ada9307a65fd420",
+          "question": [
+            "How many accounts are at risk by region?"
+          ]
+        },
+        {
+          "id": "01f1bd43d39a16cb9bc71513e5c7e34d",
+          "question": [
+            "Show me stale accounts with open pipeline value"
+          ]
+        },
+        {
+          "id": "01f1bd43d3c31e69aee3550c1f9124b0",
+          "question": [
+            "Which reps have the most at-risk revenue?"
+          ]
+        }
+      ]
+    },
+    "data_sources": {
+      "tables": [
+        {
+          "identifier": "main.ccg_workshop_cdm.mv_backorders",
+          "column_configs": [
+            {
+              "column_name": "Backorder_Quantity"
+            },
+            {
+              "column_name": "Backorder_Sales"
+            },
+            {
+              "column_name": "Count_of_Lines"
+            },
+            {
+              "column_name": "Count_of_Orders"
+            },
+            {
+              "column_name": "NAME_1",
+              "enable_format_assistance": true,
+              "enable_entity_matching": true
+            },
+            {
+              "column_name": "ad_code_area_director",
+              "enable_format_assistance": true,
+              "enable_entity_matching": true
+            },
+            {
+              "column_name": "ad_emp_first",
+              "enable_format_assistance": true,
+              "enable_entity_matching": true
+            },
+            {
+              "column_name": "ad_emp_last",
+              "enable_format_assistance": true,
+              "enable_entity_matching": true
+            },
+            {
+              "column_name": "ad_emp_nbr",
+              "enable_format_assistance": true,
+              "enable_entity_matching": true
+            },
+            {
+              "column_name": "backorder_qty",
+              "enable_format_assistance": true
+            },
+            {
+              "column_name": "business_unit",
+              "enable_format_assistance": true,
+              "enable_entity_matching": true
+            },
+            {
+              "column_name": "committed_qty",
+              "enable_format_assistance": true
+            },
+            {
+              "column_name": "customer_sales_org_key",
+              "enable_format_assistance": true
+            },
+            {
+              "column_name": "date_ordr_accepted",
+              "enable_format_assistance": true
+            },
+            {
+              "column_name": "date_ordr_line_prmsd",
+              "enable_format_assistance": true
+            },
+            {
+              "column_name": "date_ordr_line_prmsd_orig",
+              "enable_format_assistance": true
+            },
+            {
+              "column_name": "dv_code_division",
+              "enable_format_assistance": true,
+              "enable_entity_matching": true
+            },
+            {
+              "column_name": "dv_emp_first",
+              "enable_format_assistance": true,
+              "enable_entity_matching": true
+            },
+            {
+              "column_name": "dv_emp_last",
+              "enable_format_assistance": true,
+              "enable_entity_matching": true
+            },
+            {
+              "column_name": "dv_emp_nbr",
+              "enable_format_assistance": true,
+              "enable_entity_matching": true
+            },
+            {
+              "column_name": "extended_price",
+              "enable_format_assistance": true
+            },
+            {
+              "column_name": "ind_shpmt_direct",
+              "enable_format_assistance": true,
+              "enable_entity_matching": true
+            },
+            {
+              "column_name": "ind_vndr_direct_schd",
+              "enable_format_assistance": true,
+              "enable_entity_matching": true
+            },
+            {
+              "column_name": "mg_code_manager",
+              "enable_format_assistance": true,
+              "enable_entity_matching": true
+            },
+            {
+              "column_name": "mg_emp_first",
+              "enable_format_assistance": true,
+              "enable_entity_matching": true
+            },
+            {
+              "column_name": "mg_emp_last",
+              "enable_format_assistance": true,
+              "enable_entity_matching": true
+            },
+            {
+              "column_name": "mg_emp_nbr",
+              "enable_format_assistance": true,
+              "enable_entity_matching": true
+            },
+            {
+              "column_name": "name_cust_desc_line_1",
+              "enable_format_assistance": true,
+              "enable_entity_matching": true
+            },
+            {
+              "column_name": "name_cust_desc_line_2",
+              "enable_format_assistance": true,
+              "enable_entity_matching": true
+            },
+            {
+              "column_name": "oe_status_id",
+              "enable_format_assistance": true
+            },
+            {
+              "column_name": "order_line",
+              "enable_format_assistance": true
+            },
+            {
+              "column_name": "order_number",
+              "enable_format_assistance": true,
+              "enable_entity_matching": true
+            },
+            {
+              "column_name": "order_status_date",
+              "enable_format_assistance": true
+            },
+            {
+              "column_name": "plant_code",
+              "enable_format_assistance": true,
+              "enable_entity_matching": true
+            },
+            {
+              "column_name": "prduct_type_description",
+              "enable_format_assistance": true,
+              "enable_entity_matching": true
+            },
+            {
+              "column_name": "rg_code_region",
+              "enable_format_assistance": true,
+              "enable_entity_matching": true
+            },
+            {
+              "column_name": "rg_emp_first",
+              "enable_format_assistance": true,
+              "enable_entity_matching": true
+            },
+            {
+              "column_name": "rg_emp_last",
+              "enable_format_assistance": true,
+              "enable_entity_matching": true
+            },
+            {
+              "column_name": "rg_emp_nbr",
+              "enable_format_assistance": true,
+              "enable_entity_matching": true
+            },
+            {
+              "column_name": "rp_emp_first",
+              "enable_format_assistance": true,
+              "enable_entity_matching": true
+            },
+            {
+              "column_name": "rp_emp_last",
+              "enable_format_assistance": true,
+              "enable_entity_matching": true
+            },
+            {
+              "column_name": "rp_emp_nbr",
+              "enable_format_assistance": true,
+              "enable_entity_matching": true
+            },
+            {
+              "column_name": "status_description",
+              "enable_format_assistance": true,
+              "enable_entity_matching": true
+            },
+            {
+              "column_name": "supplier_name",
+              "enable_format_assistance": true,
+              "enable_entity_matching": true
+            },
+            {
+              "column_name": "supplier_number",
+              "enable_format_assistance": true,
+              "enable_entity_matching": true
+            },
+            {
+              "column_name": "total_qty",
+              "enable_format_assistance": true
+            }
+          ]
+        },
+        {
+          "identifier": "main.ccg_workshop_cdm.mv_commercial_effectiveness"
+        },
+        {
+          "identifier": "main.ccg_workshop_cdm.mv_customer_360",
+          "column_configs": [
+            {
+              "column_name": "Account Count"
+            },
+            {
+              "column_name": "Account Name",
+              "enable_format_assistance": true,
+              "enable_entity_matching": true
+            },
+            {
+              "column_name": "At Risk Accounts"
+            },
+            {
+              "column_name": "Avg Backorder Pct"
+            },
+            {
+              "column_name": "Avg Days Since Activity"
+            },
+            {
+              "column_name": "Avg Product Coverage"
+            },
+            {
+              "column_name": "Avg Risk Score"
+            },
+            {
+              "column_name": "Backorder Lines"
+            },
+            {
+              "column_name": "Business Unit",
+              "enable_format_assistance": true,
+              "enable_entity_matching": true
+            },
+            {
+              "column_name": "Escalated Cases"
+            },
+            {
+              "column_name": "Has Backorders",
+              "enable_format_assistance": true
+            },
+            {
+              "column_name": "Has Escalations",
+              "enable_format_assistance": true
+            },
+            {
+              "column_name": "Industry",
+              "enable_format_assistance": true,
+              "enable_entity_matching": true
+            },
+            {
+              "column_name": "Is Stale",
+              "enable_format_assistance": true
+            },
+            {
+              "column_name": "Manager Name",
+              "enable_format_assistance": true,
+              "enable_entity_matching": true
+            },
+            {
+              "column_name": "Open Cases"
+            },
+            {
+              "column_name": "Product Families",
+              "enable_format_assistance": true,
+              "enable_entity_matching": true
+            },
+            {
+              "column_name": "Region",
+              "enable_format_assistance": true,
+              "enable_entity_matching": true
+            },
+            {
+              "column_name": "Rep Name",
+              "enable_format_assistance": true,
+              "enable_entity_matching": true
+            },
+            {
+              "column_name": "Revenue At Risk"
+            },
+            {
+              "column_name": "Risk Category",
+              "enable_format_assistance": true,
+              "enable_entity_matching": true
+            },
+            {
+              "column_name": "Stale Accounts"
+            },
+            {
+              "column_name": "Total Annual Revenue"
+            },
+            {
+              "column_name": "Total Closed Lost"
+            },
+            {
+              "column_name": "Total Closed Won"
+            },
+            {
+              "column_name": "Total Contacts"
+            },
+            {
+              "column_name": "Total Order Value"
+            },
+            {
+              "column_name": "Total Orders"
+            },
+            {
+              "column_name": "Total Pipeline"
+            },
+            {
+              "column_name": "Win Rate"
+            }
+          ]
+        },
+        {
+          "identifier": "main.ccg_workshop_cdm.mv_marketing_funnel"
+        }
+      ]
+    },
+    "instructions": {
+      "text_instructions": [
+        {
+          "id": "01f19c8ccac7124fb8b9b156c3bf9ea3",
+          "content": [
+            "Data scope: This agent focuses exclusively on CCG backorder and on-hold shipment lines. The dataset is filtered where oe_status_id IN ('BOR', 'HLD').\n",
+            "Key fields:\n",
+            "backorder_qty: Units currently unfilled. Synonyms: BO qty, open quantity.\n",
+            "unit_price: Individual item cost utilized for determining Backorder Sales revenue.\n",
+            "extended_price: The extended line amount (total price for the line)\n",
+            "backorder_sales: Total line-level revenue, derived from the product of unfilled units and the individual item cost.\n",
+            "order_status_date: The date when the shipment line reached its current status.\n",
+            "plant_code: Represents the warehouse or distribution center. Synonyms: warehouse, DC, plant.\n",
+            "NAME_1: Categorizes the supplier (Internal vs External).\n",
+            "shpmt_direct_description: Details if the shipment is fulfilled directly by the supplier or via a CCG distribution center. Synonyms: direct ship, fulfillment type.\n",
+            "Joins and grain:\n",
+            "One row represents a single shipment line in backorder or hold status.\n",
+            "Supplier data is accessed via product: cur_shipment_line -> cur_product -> cur_supplier.\n",
+            "Customer hierarchy is linked through ship-to: cur_shipment_line -> cur_customer_shipto -> cur_customer_sales_org.\n",
+            "order_number identifies the sales order; multiple lines can share a single order identifier.\n",
+            "Business rules:\n",
+            "Utilize MEASURE(Backorder_Sales) for revenue queries unless a different logic is specified.\n",
+            "Utilize MEASURE(Count_of_Orders) to determine the number of orders (counts distinct sales orders, not lines).\n",
+            "Utilize MEASURE(Count_of_Lines) for inquiries regarding line or item counts.\n",
+            "\"Supplier\" and \"vendor\" are used interchangeably; refer to supplier_number and supplier_name.\n",
+            "Calculate aging by finding the difference in days between order_status_date and CURRENT_DATE().\n",
+            "Perform promise date aging using date_ordr_line_prmsd (current promise) rather than the original promise date, unless otherwise instructed.\n",
+            "Request clarification via a follow-up if it is unclear whether the user is referencing orders or lines\n",
+            "\n",
+            "--- Customer 360 / Account Risk (mv_customer_360) ---\n",
+            "mv_customer_360 joins Salesforce CRM data with CDM order health into a unified account-level view. Use for:\n",
+            "- Account risk scores (0-100, ML-predicted): High (>=50), Medium (25-49), Low (<25)\n",
+            "- Account staleness: days since last Salesforce activity. Stale = 90+ days with no activity.\n",
+            "- Open pipeline value, closed won/lost, win rate per account\n",
+            "- Backorder exposure per account (line count, qty, % backordered)\n",
+            "- Product coverage (how many of 8 product families an account buys)\n",
+            "- Cases: open, escalated, high priority per account\n",
+            "- Sales rep and manager rollup\n",
+            "\n",
+            "Key MEASURE() functions for mv_customer_360:\n",
+            "- MEASURE(`Account Count`), MEASURE(`Total Annual Revenue`), MEASURE(`Avg Risk Score`)\n",
+            "- MEASURE(`Total Pipeline`), MEASURE(`Total Closed Won`), MEASURE(`Total Closed Lost`), MEASURE(`Win Rate`)\n",
+            "- MEASURE(`Open Cases`), MEASURE(`Escalated Cases`), MEASURE(`Total Orders`), MEASURE(`Total Order Value`)\n",
+            "- MEASURE(`Backorder Lines`), MEASURE(`Avg Backorder Pct`), MEASURE(`Avg Product Coverage`)\n",
+            "- MEASURE(`At Risk Accounts`), MEASURE(`Stale Accounts`), MEASURE(`Revenue At Risk`)\n",
+            "- MEASURE(`Total Contacts`), MEASURE(`Avg Days Since Activity`)\n",
+            "\n",
+            "Risk Category is a dimension derived from risk_score: High (>=50), Medium (25-49), Low (<25).\n",
+            "Risk score = 100 x the probability (from account_risk_model@champion) that the account's revenue over the next 6 months falls below 60% of its trailing 12-month run rate. Revenue At Risk = expected revenue at risk (annual revenue x that probability). Days inactive and Stale Accounts are measured as of the data snapshot date, not today. \n",
+            "When users ask about 'at-risk accounts' or 'accounts in trouble', use MEASURE(`At Risk Accounts`) or filter Risk Category = 'High'.\n",
+            "When users ask about 'stale accounts' or 'inactive accounts', use MEASURE(`Stale Accounts`) or filter Is Stale = true.\n",
+            "When users ask about 'revenue at risk', use MEASURE(`Revenue At Risk`) which is the expected revenue at risk: annual revenue x the model's probability of decline, summed across accounts.\n",
+            "Product coverage max is 8 (the 8 product families: Chemicals, Equipment, Plasticware, Glassware, Consumables, Instruments, Reagents, Safety)."
+          ]
+        }
+      ],
+      "example_question_sqls": [
+        {
+          "id": "01f1a71999241722b71f5c0bc461928c",
+          "question": [
+            "What is the pipeline breakdown by region?"
+          ],
+          "sql": [
+            "SELECT `Region`, MEASURE(`Pipeline Value`) AS pipeline, MEASURE(`Weighted Pipeline`) AS weighted_pipeline, MEASURE(`Closed Won Revenue`) AS bookings, MEASURE(`Win Rate`) AS win_rate, MEASURE(`Deal Count`) AS deals FROM main.ccg_workshop_cdm.mv_commercial_effectiveness GROUP BY `Region` ORDER BY pipeline DESC"
+          ]
+        },
+        {
+          "id": "01f1a71999241a1380bd29c495275e40",
+          "question": [
+            "Show me sales rep performance in LATAM"
+          ],
+          "sql": [
+            "SELECT `Sales Rep`, `Sales Team`, `Territory`, MEASURE(`Pipeline Value`) AS pipeline, MEASURE(`Closed Won Revenue`) AS won_revenue, MEASURE(`Win Rate`) AS win_rate, MEASURE(`Won Deals`) AS won_deals, MEASURE(`Avg Sales Cycle`) AS avg_cycle_days FROM main.ccg_workshop_cdm.mv_commercial_effectiveness WHERE `Region` = 'LATAM' GROUP BY ALL ORDER BY won_revenue DESC"
+          ]
+        },
+        {
+          "id": "01f1a71999241c4c9c2c3f1d5babb123",
+          "question": [
+            "What are the top loss reasons by value?"
+          ],
+          "sql": [
+            "SELECT `Win Loss Reason`, MEASURE(`Closed Lost Value`) AS lost_value, MEASURE(`Lost Deals`) AS lost_deals, MEASURE(`Avg Deal Size`) AS avg_deal FROM main.ccg_workshop_cdm.mv_commercial_effectiveness WHERE `Win Loss Reason` IS NOT NULL GROUP BY `Win Loss Reason` ORDER BY lost_value DESC"
+          ]
+        },
+        {
+          "id": "01f1a71999241e319b82bd879a31a8e3",
+          "question": [
+            "Show pipeline by forecast category and stage"
+          ],
+          "sql": [
+            "SELECT `Forecast Category`, `Stage`, MEASURE(`Pipeline Value`) AS pipeline, MEASURE(`Deal Count`) AS deals FROM main.ccg_workshop_cdm.mv_commercial_effectiveness GROUP BY `Forecast Category`, `Stage` ORDER BY `Forecast Category`, pipeline DESC"
+          ]
+        },
+        {
+          "id": "01f1a719992510cbb002c477d7c9339e",
+          "question": [
+            "Which product lines have the highest win rate?"
+          ],
+          "sql": [
+            "SELECT `Product Line`, `Business Line`, MEASURE(`Win Rate`) AS win_rate, MEASURE(`Closed Won Revenue`) AS revenue, MEASURE(`Deal Count`) AS deals, MEASURE(`Avg Sales Cycle`) AS avg_cycle FROM main.ccg_workshop_cdm.mv_commercial_effectiveness GROUP BY `Product Line`, `Business Line` ORDER BY win_rate DESC"
+          ]
+        },
+        {
+          "id": "01f1a71999251447999b72a532fe6fd3",
+          "question": [
+            "Show monthly revenue trend"
+          ],
+          "sql": [
+            "SELECT `Close Month`, MEASURE(`Closed Won Revenue`) AS revenue, MEASURE(`Pipeline Value`) AS pipeline, MEASURE(`Won Deals`) AS won_deals, MEASURE(`Win Rate`) AS win_rate FROM main.ccg_workshop_cdm.mv_commercial_effectiveness GROUP BY `Close Month` ORDER BY `Close Month`"
+          ]
+        },
+        {
+          "id": "01f1a72dbee41203b7415187b66d9808",
+          "question": [
+            "What are the top lead sources by conversion rate?"
+          ],
+          "sql": [
+            "SELECT `Lead Source`, MEASURE(`Total Leads`) AS leads, MEASURE(`Converted Leads`) AS converted, MEASURE(`Conversion Rate`) AS conv_rate, MEASURE(`Avg Days to Convert`) AS avg_days, MEASURE(`Total Estimated Value`) AS est_value FROM main.ccg_workshop_cdm.mv_marketing_funnel GROUP BY `Lead Source` ORDER BY conv_rate DESC"
+          ]
+        },
+        {
+          "id": "01f1a72dbee414f2b8e21b4e5fd96517",
+          "question": [
+            "Show lead funnel by quality rating"
+          ],
+          "sql": [
+            "SELECT `Lead Rating`, `Lead Status`, MEASURE(`Total Leads`) AS leads, MEASURE(`Conversion Rate`) AS conv_rate, MEASURE(`Avg Lead Value`) AS avg_value FROM main.ccg_workshop_cdm.mv_marketing_funnel GROUP BY `Lead Rating`, `Lead Status` ORDER BY `Lead Rating`, leads DESC"
+          ]
+        },
+        {
+          "id": "01f1a72dbee41700940f32cb13786fe0",
+          "question": [
+            "What are the top disqualification reasons?"
+          ],
+          "sql": [
+            "SELECT `Disqualification Reason`, MEASURE(`Disqualified Leads`) AS disqualified, MEASURE(`Total Estimated Value`) AS lost_value FROM main.ccg_workshop_cdm.mv_marketing_funnel WHERE `Disqualification Reason` IS NOT NULL GROUP BY `Disqualification Reason` ORDER BY disqualified DESC"
+          ]
+        },
+        {
+          "id": "01f1ab825608130f82964c5e04b143e9",
+          "question": [
+            "What are total backorder sales by supplier?"
+          ],
+          "sql": [
+            "SELECT `supplier_name`, `supplier_number`, MEASURE(`Backorder_Sales`) AS `backorder_sales`, MEASURE(`Count_of_Lines`) AS `line_count`, MEASURE(`Backorder_Quantity`) AS `backorder_qty` FROM `main`.`ccg_workshop_cdm`.`mv_backorders` GROUP BY `supplier_name`, `supplier_number` ORDER BY `backorder_sales` DESC"
+          ]
+        },
+        {
+          "id": "01f1ab82560816219df0d3b2b971dda1",
+          "question": [
+            "Which plants have the most backordered lines?"
+          ],
+          "sql": [
+            "SELECT `plant_code`, MEASURE(`Count_of_Lines`) AS `line_count`, MEASURE(`Backorder_Sales`) AS `backorder_sales`, MEASURE(`Backorder_Quantity`) AS `backorder_qty` FROM `main`.`ccg_workshop_cdm`.`mv_backorders` GROUP BY `plant_code` ORDER BY `line_count` DESC"
+          ]
+        },
+        {
+          "id": "01f1ab82560818b38c62528bf6043a7c",
+          "question": [
+            "Which customers are most impacted by backorders?"
+          ],
+          "sql": [
+            "SELECT `name_cust_desc_line_1` AS `customer`, MEASURE(`Backorder_Sales`) AS `backorder_sales`, MEASURE(`Count_of_Orders`) AS `order_count`, MEASURE(`Count_of_Lines`) AS `line_count` FROM `main`.`ccg_workshop_cdm`.`mv_backorders` GROUP BY `name_cust_desc_line_1` ORDER BY `backorder_sales` DESC LIMIT 20"
+          ]
+        },
+        {
+          "id": "01f1ab8256081af4b46cc1525507d4e4",
+          "question": [
+            "Show the AI revenue forecast vs actuals"
+          ],
+          "sql": [
+            "WITH actuals AS (\n",
+            "  SELECT DATE_TRUNC('MONTH', `Close Date`) AS ds,\n",
+            "         MEASURE(`Closed Won Revenue`) AS revenue\n",
+            "  FROM `main`.`ccg_workshop_cdm`.`mv_commercial_effectiveness`\n",
+            "  GROUP BY 1\n",
+            "  HAVING ds IS NOT NULL\n",
+            "),\n",
+            "forecasted AS (\n",
+            "  SELECT * FROM ai_forecast(TABLE(actuals), horizon => 6)\n",
+            ")\n",
+            "SELECT * FROM actuals\n",
+            "UNION ALL\n",
+            "SELECT ds, forecast AS revenue FROM forecasted\n",
+            "ORDER BY ds"
+          ]
+        },
+        {
+          "id": "01f1bd43bce515468e447a4bc89541c1",
+          "question": [
+            "Which accounts have the highest risk scores?"
+          ],
+          "sql": [
+            "SELECT `Account Name`, `Industry`, `Region`, `Rep Name`, MEASURE(`Avg Risk Score`) AS risk_score, MEASURE(`Avg Days Since Activity`) AS days_inactive, MEASURE(`Backorder Lines`) AS backorder_lines, MEASURE(`Open Cases`) AS open_cases, MEASURE(`Total Annual Revenue`) AS revenue FROM main.ccg_workshop_cdm.mv_customer_360 GROUP BY `Account Name`, `Industry`, `Region`, `Rep Name` ORDER BY risk_score DESC LIMIT 20"
+          ]
+        },
+        {
+          "id": "01f1bd43bce519bf86220fef31a76269",
+          "question": [
+            "How many accounts are at risk by region?"
+          ],
+          "sql": [
+            "SELECT `Region`, MEASURE(`Account Count`) AS total_accounts, MEASURE(`At Risk Accounts`) AS at_risk, MEASURE(`Revenue At Risk`) AS revenue_at_risk, MEASURE(`Avg Risk Score`) AS avg_risk FROM main.ccg_workshop_cdm.mv_customer_360 GROUP BY `Region` ORDER BY at_risk DESC"
+          ]
+        },
+        {
+          "id": "01f1bd43bce51cc19c5519f743efc87b",
+          "question": [
+            "Show me stale accounts with open pipeline"
+          ],
+          "sql": [
+            "SELECT `Account Name`, `Rep Name`, `Region`, MEASURE(`Avg Days Since Activity`) AS days_inactive, MEASURE(`Total Pipeline`) AS pipeline, MEASURE(`Total Annual Revenue`) AS revenue, MEASURE(`Avg Risk Score`) AS risk_score FROM main.ccg_workshop_cdm.mv_customer_360 WHERE `Is Stale` = 'true' GROUP BY `Account Name`, `Rep Name`, `Region` HAVING pipeline > 0 ORDER BY pipeline DESC"
+          ]
+        },
+        {
+          "id": "01f1bd43bce51f958a7b6343d76d00da",
+          "question": [
+            "What is the risk breakdown by business unit?"
+          ],
+          "sql": [
+            "SELECT `Business Unit`, `Risk Category`, MEASURE(`Account Count`) AS accounts, MEASURE(`Total Annual Revenue`) AS revenue, MEASURE(`Total Pipeline`) AS pipeline, MEASURE(`Backorder Lines`) AS backorder_lines FROM main.ccg_workshop_cdm.mv_customer_360 GROUP BY `Business Unit`, `Risk Category` ORDER BY `Business Unit`, accounts DESC"
+          ]
+        },
+        {
+          "id": "01f1bd43bce6123c9fd25a28b0845b20",
+          "question": [
+            "Which reps have the most at-risk accounts?"
+          ],
+          "sql": [
+            "SELECT `Rep Name`, `Manager Name`, `Region`, MEASURE(`Account Count`) AS total_accounts, MEASURE(`At Risk Accounts`) AS at_risk, MEASURE(`Revenue At Risk`) AS revenue_at_risk, MEASURE(`Avg Risk Score`) AS avg_risk, MEASURE(`Stale Accounts`) AS stale FROM main.ccg_workshop_cdm.mv_customer_360 GROUP BY `Rep Name`, `Manager Name`, `Region` ORDER BY at_risk DESC"
+          ]
+        },
+        {
+          "id": "01f1bd43bce613f29fd1fb1f30e968ba",
+          "question": [
+            "Show product coverage gaps by industry"
+          ],
+          "sql": [
+            "SELECT `Industry`, MEASURE(`Account Count`) AS accounts, MEASURE(`Avg Product Coverage`) AS avg_families, MEASURE(`Total Annual Revenue`) AS revenue, MEASURE(`Avg Risk Score`) AS avg_risk FROM main.ccg_workshop_cdm.mv_customer_360 GROUP BY `Industry` ORDER BY avg_families ASC"
+          ]
+        }
+      ],
+      "sql_snippets": {
+        "filters": [
+          {
+            "id": "01f1ab82559319e89fb02ddd460bd9e2",
+            "sql": [
+              "mv_commercial_effectiveness.`Stage` = 'Closed Won'"
+            ],
+            "display_name": "Closed Won opportunities"
+          },
+          {
+            "id": "01f1ab8255931d56ae67c349e59b1b8c",
+            "sql": [
+              "mv_commercial_effectiveness.`Stage` = 'Closed Lost'"
+            ],
+            "display_name": "Closed Lost opportunities"
+          },
+          {
+            "id": "01f1ab8255941036bf8b0e097cc5858b",
+            "sql": [
+              "mv_commercial_effectiveness.`Forecast Category` = 'commit'"
+            ],
+            "display_name": "Commit forecast deals"
+          },
+          {
+            "id": "01f1ab8255941249bb8b4bc600ad6105",
+            "sql": [
+              "mv_marketing_funnel.`Lead Rating` = 'Hot'"
+            ],
+            "display_name": "Hot leads only"
+          },
+          {
+            "id": "01f1ab825594146c9a1f02e75d6fe138",
+            "sql": [
+              "mv_marketing_funnel.`Lead Status` = 'Converted'"
+            ],
+            "display_name": "Converted leads"
+          },
+          {
+            "id": "01f1ab82559416648af57be766ee54c7",
+            "sql": [
+              "mv_backorders.`status_description` = 'Backordered'"
+            ],
+            "display_name": "Backordered lines only"
+          },
+          {
+            "id": "01f1ab8255941ac39ec7125333b85cab",
+            "sql": [
+              "mv_backorders.`status_description` = 'On Hold'"
+            ],
+            "display_name": "On Hold lines only"
+          },
+          {
+            "id": "01f1bd43bd9f180d9c39773a042e369a",
+            "sql": [
+              "mv_customer_360.`Risk Category` = 'High'"
+            ],
+            "display_name": "High-risk accounts"
+          },
+          {
+            "id": "01f1bd43bd9f1b26a9a7b7805be9a1a4",
+            "sql": [
+              "mv_customer_360.`Is Stale` = 'true'"
+            ],
+            "display_name": "Stale accounts (90+ days inactive)"
+          },
+          {
+            "id": "01f1bd43bd9f1d8f8f8a385468b504e8",
+            "sql": [
+              "mv_customer_360.`Has Backorders` = 'true'"
+            ],
+            "display_name": "Accounts with backorders"
+          },
+          {
+            "id": "01f1bd43bd9f1f73bb2c37467a33b1b4",
+            "sql": [
+              "mv_customer_360.`Has Escalations` = 'true'"
+            ],
+            "display_name": "Accounts with escalated cases"
+          }
+        ],
+        "expressions": [
+          {
+            "id": "01f19c8d2dd514eb82b9d0dc8d559045",
+            "alias": "backorder_aging_days",
+            "sql": [
+              "DATEDIFF(mv_backorders.`order_status_date`, mv_backorders.`date_ordr_line_prmsd`)"
+            ],
+            "display_name": "backorder aging days",
+            "instruction": [
+              "WHEN_TO_USE: Use this calculation when the user asks about 'backorder aging', 'days past promise', 'aging distribution', or 'how long backorders have been outstanding'. SCOPE_TABLES: mv_backorders table. TIMEFRAME_HINT: This calculates aging as of the order_status_date (the date when the order status was recorded), NOT as of today's date or a fixed date. This is the dynamic aging calculation that reflects the actual historical aging at the time of status. RISK_IF_MISUSED: Using CURRENT_DATE() or a hardcoded date instead of order_status_date will produce incorrect aging calculations that don't reflect the actual historical aging of backorders."
+            ]
+          },
+          {
+            "id": "01f19c8d2dd61ca4bcfec5e60b655ebc",
+            "alias": "backorder_aging_bucket",
+            "sql": [
+              "CASE WHEN DATEDIFF(mv_backorders.`order_status_date`, mv_backorders.`date_ordr_line_prmsd`) BETWEEN 0 AND 7 THEN '0-7 days' WHEN DATEDIFF(mv_backorders.`order_status_date`, mv_backorders.`date_ordr_line_prmsd`) BETWEEN 8 AND 14 THEN '8-14 days' WHEN DATEDIFF(mv_backorders.`order_status_date`, mv_backorders.`date_ordr_line_prmsd`) BETWEEN 15 AND 30 THEN '15-30 days' WHEN DATEDIFF(mv_backorders.`order_status_date`, mv_backorders.`date_ordr_line_prmsd`) BETWEEN 31 AND 60 THEN '31-60 days' WHEN DATEDIFF(mv_backorders.`order_status_date`, mv_backorders.`date_ordr_line_prmsd`) > 60 THEN '60+ days' ELSE 'Negative/Other' END"
+            ],
+            "display_name": "backorder aging bucket",
+            "instruction": [
+              "WHEN_TO_USE: Use this bucketing logic when the user asks for 'aging distribution', 'aging buckets', 'aging breakdown', or specifically mentions the day ranges (0-7, 8-14, 15-30, 31-60, 60+ days). SCOPE_TABLES: mv_backorders table. TIMEFRAME_HINT: This categorizes the days difference between order_status_date and date_ordr_line_prmsd into standard aging buckets. The ELSE clause 'Negative/Other' handles cases where the difference is negative (promised date is after status date) or other edge cases. RISK_IF_MISUSED: These specific day ranges (0-7, 8-14, 15-30, 31-60, 60+) appear to be standard business buckets for this organization. Don't modify the ranges unless the user explicitly requests different bucketing."
+            ]
+          },
+          {
+            "id": "01f1bd43bda011258300cbb5b3680820",
+            "sql": [
+              "CASE WHEN mv_customer_360.`Risk Category` = 'High' THEN 3 WHEN mv_customer_360.`Risk Category` = 'Medium' THEN 2 ELSE 1 END"
+            ],
+            "display_name": "account risk tier"
+          }
+        ]
+      }
+    },
+    "benchmarks": {
+      "questions": [
+        {
+          "id": "01f1ab825ec518f8a92a23587f7ef560",
+          "question": [
+            "Which industries have the highest lead conversion rate?"
+          ],
+          "answer": [
+            {
+              "format": "SQL",
+              "content": [
+                "SELECT `Industry`, MEASURE(`Total Leads`) AS `total_leads`, MEASURE(`Conversion Rate`) AS `conv_rate` FROM `main`.`ccg_workshop_cdm`.`mv_marketing_funnel` WHERE `Industry` IS NOT NULL GROUP BY `Industry` ORDER BY `conv_rate` DESC"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "01f1ab825eaa1bb997f93b86472eb877",
+          "question": [
+            "What is the conversion rate by lead rating?"
+          ],
+          "answer": [
+            {
+              "format": "SQL",
+              "content": [
+                "SELECT `Lead Rating`, MEASURE(`Total Leads`) AS `total_leads`, MEASURE(`Converted Leads`) AS `converted_leads`, MEASURE(`Conversion Rate`) AS `conversion_rate` FROM `main`.`ccg_workshop_cdm`.`mv_marketing_funnel` GROUP BY `Lead Rating` ORDER BY `conversion_rate` DESC"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "01f1ab825e941412a8d23de3ab3e2e20",
+          "question": [
+            "How many leads were generated by each lead source?"
+          ],
+          "answer": [
+            {
+              "format": "SQL",
+              "content": [
+                "SELECT `Lead Source`, MEASURE(`Total Leads`) AS `total_leads` FROM `main`.`ccg_workshop_cdm`.`mv_marketing_funnel` GROUP BY `Lead Source` ORDER BY `total_leads` DESC"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "01f1ab825e7d1cb9ab3fdcf06f0b3596",
+          "question": [
+            "Who are the top 10 sales reps by closed-won revenue?"
+          ],
+          "answer": [
+            {
+              "format": "SQL",
+              "content": [
+                "SELECT `Sales Rep`, MEASURE(`Closed Won Revenue`) AS `revenue` FROM `main`.`ccg_workshop_cdm`.`mv_commercial_effectiveness` WHERE `Sales Rep` IS NOT NULL GROUP BY `Sales Rep` ORDER BY `revenue` DESC LIMIT 10"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "01f1ab825e6615048bd5de0090a0332a",
+          "question": [
+            "What is the win rate by sales team?"
+          ],
+          "answer": [
+            {
+              "format": "SQL",
+              "content": [
+                "SELECT `Sales Team`, MEASURE(`Win Rate`) AS `win_rate`, MEASURE(`Won Deals`) AS `won_deals`, MEASURE(`Lost Deals`) AS `lost_deals`, MEASURE(`Deal Count`) AS `total_deals` FROM `main`.`ccg_workshop_cdm`.`mv_commercial_effectiveness` GROUP BY `Sales Team` ORDER BY `win_rate` DESC"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "01f1ab825e4f1455b86db46abf9bf660",
+          "question": [
+            "What is the total pipeline value by region?"
+          ],
+          "answer": [
+            {
+              "format": "SQL",
+              "content": [
+                "SELECT `Region`, MEASURE(`Pipeline Value`) AS `pipeline_value` FROM `main`.`ccg_workshop_cdm`.`mv_commercial_effectiveness` GROUP BY `Region` ORDER BY `pipeline_value` DESC"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "01f19c8c598317db9e43b8c877bdc00c",
+          "question": [
+            "Show backorder aging distribution for 0-7, 8-14, 15-30, 31-60, and 60+ days based on date_ordr_line_prmsd."
+          ],
+          "answer": [
+            {
+              "format": "SQL",
+              "content": [
+                "SELECT\n",
+                "  CASE\n",
+                "    WHEN DATEDIFF(`order_status_date`, `date_ordr_line_prmsd`) BETWEEN 0 AND 7 THEN '0-7 days'\n",
+                "    WHEN DATEDIFF(`order_status_date`, `date_ordr_line_prmsd`) BETWEEN 8 AND 14 THEN '8-14 days'\n",
+                "    WHEN DATEDIFF(`order_status_date`, `date_ordr_line_prmsd`) BETWEEN 15 AND 30 THEN '15-30 days'\n",
+                "    WHEN DATEDIFF(`order_status_date`, `date_ordr_line_prmsd`) BETWEEN 31 AND 60 THEN '31-60 days'\n",
+                "    WHEN DATEDIFF(`order_status_date`, `date_ordr_line_prmsd`) > 60 THEN '60+ days'\n",
+                "    ELSE 'Negative/Other'\n",
+                "  END AS `age_bucket`,\n",
+                "  MEASURE(`Count_of_Lines`) AS `line_count`,\n",
+                "  MEASURE(`Backorder_Quantity`) AS `backorder_qty`,\n",
+                "  MEASURE(`Backorder_Sales`) AS `backorder_sales`\n",
+                "FROM\n",
+                "  `main`.`lkyei_training`.`mv_backorders`\n",
+                "WHERE\n",
+                "  `order_status_date` IS NOT NULL\n",
+                "  AND `date_ordr_line_prmsd` IS NOT NULL\n",
+                "GROUP BY\n",
+                "  ALL\n",
+                "ORDER BY\n",
+                "  CASE\n",
+                "    WHEN\n",
+                "      CASE\n",
+                "        WHEN DATEDIFF(`order_status_date`, `date_ordr_line_prmsd`) BETWEEN 0 AND 7 THEN '0-7 days'\n",
+                "        WHEN DATEDIFF(`order_status_date`, `date_ordr_line_prmsd`) BETWEEN 8 AND 14 THEN '8-14 days'\n",
+                "        WHEN\n",
+                "          DATEDIFF(`order_status_date`, `date_ordr_line_prmsd`) BETWEEN 15 AND 30\n",
+                "        THEN\n",
+                "          '15-30 days'\n",
+                "        WHEN\n",
+                "          DATEDIFF(`order_status_date`, `date_ordr_line_prmsd`) BETWEEN 31 AND 60\n",
+                "        THEN\n",
+                "          '31-60 days'\n",
+                "        WHEN DATEDIFF(`order_status_date`, `date_ordr_line_prmsd`) > 60 THEN '60+ days'\n",
+                "        ELSE 'Negative/Other'\n",
+                "      END = '0-7 days'\n",
+                "    THEN\n",
+                "      1\n",
+                "    WHEN\n",
+                "      CASE\n",
+                "        WHEN DATEDIFF(`order_status_date`, `date_ordr_line_prmsd`) BETWEEN 0 AND 7 THEN '0-7 days'\n",
+                "        WHEN DATEDIFF(`order_status_date`, `date_ordr_line_prmsd`) BETWEEN 8 AND 14 THEN '8-14 days'\n",
+                "        WHEN\n",
+                "          DATEDIFF(`order_status_date`, `date_ordr_line_prmsd`) BETWEEN 15 AND 30\n",
+                "        THEN\n",
+                "          '15-30 days'\n",
+                "        WHEN\n",
+                "          DATEDIFF(`order_status_date`, `date_ordr_line_prmsd`) BETWEEN 31 AND 60\n",
+                "        THEN\n",
+                "          '31-60 days'\n",
+                "        WHEN DATEDIFF(`order_status_date`, `date_ordr_line_prmsd`) > 60 THEN '60+ days'\n",
+                "        ELSE 'Negative/Other'\n",
+                "      END = '8-14 days'\n",
+                "    THEN\n",
+                "      2\n",
+                "    WHEN\n",
+                "      CASE\n",
+                "        WHEN DATEDIFF(`order_status_date`, `date_ordr_line_prmsd`) BETWEEN 0 AND 7 THEN '0-7 days'\n",
+                "        WHEN DATEDIFF(`order_status_date`, `date_ordr_line_prmsd`) BETWEEN 8 AND 14 THEN '8-14 days'\n",
+                "        WHEN\n",
+                "          DATEDIFF(`order_status_date`, `date_ordr_line_prmsd`) BETWEEN 15 AND 30\n",
+                "        THEN\n",
+                "          '15-30 days'\n",
+                "        WHEN\n",
+                "          DATEDIFF(`order_status_date`, `date_ordr_line_prmsd`) BETWEEN 31 AND 60\n",
+                "        THEN\n",
+                "          '31-60 days'\n",
+                "        WHEN DATEDIFF(`order_status_date`, `date_ordr_line_prmsd`) > 60 THEN '60+ days'\n",
+                "        ELSE 'Negative/Other'\n",
+                "      END = '15-30 days'\n",
+                "    THEN\n",
+                "      3\n",
+                "    WHEN\n",
+                "      CASE\n",
+                "        WHEN DATEDIFF(`order_status_date`, `date_ordr_line_prmsd`) BETWEEN 0 AND 7 THEN '0-7 days'\n",
+                "        WHEN DATEDIFF(`order_status_date`, `date_ordr_line_prmsd`) BETWEEN 8 AND 14 THEN '8-14 days'\n",
+                "        WHEN\n",
+                "          DATEDIFF(`order_status_date`, `date_ordr_line_prmsd`) BETWEEN 15 AND 30\n",
+                "        THEN\n",
+                "          '15-30 days'\n",
+                "        WHEN\n",
+                "          DATEDIFF(`order_status_date`, `date_ordr_line_prmsd`) BETWEEN 31 AND 60\n",
+                "        THEN\n",
+                "          '31-60 days'\n",
+                "        WHEN DATEDIFF(`order_status_date`, `date_ordr_line_prmsd`) > 60 THEN '60+ days'\n",
+                "        ELSE 'Negative/Other'\n",
+                "      END = '31-60 days'\n",
+                "    THEN\n",
+                "      4\n",
+                "    WHEN\n",
+                "      CASE\n",
+                "        WHEN DATEDIFF(`order_status_date`, `date_ordr_line_prmsd`) BETWEEN 0 AND 7 THEN '0-7 days'\n",
+                "        WHEN DATEDIFF(`order_status_date`, `date_ordr_line_prmsd`) BETWEEN 8 AND 14 THEN '8-14 days'\n",
+                "        WHEN\n",
+                "          DATEDIFF(`order_status_date`, `date_ordr_line_prmsd`) BETWEEN 15 AND 30\n",
+                "        THEN\n",
+                "          '15-30 days'\n",
+                "        WHEN\n",
+                "          DATEDIFF(`order_status_date`, `date_ordr_line_prmsd`) BETWEEN 31 AND 60\n",
+                "        THEN\n",
+                "          '31-60 days'\n",
+                "        WHEN DATEDIFF(`order_status_date`, `date_ordr_line_prmsd`) > 60 THEN '60+ days'\n",
+                "        ELSE 'Negative/Other'\n",
+                "      END = '60+ days'\n",
+                "    THEN\n",
+                "      5\n",
+                "    ELSE 6\n",
+                "  END"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "01f19c8c30621c3dbc0b806f7107f074",
+          "question": [
+            "How many order lines are currently backordered, and which suppliers have the most?"
+          ],
+          "answer": [
+            {
+              "format": "SQL",
+              "content": [
+                "WITH total_backorders AS (\n",
+                "  SELECT MEASURE(`Count_of_Lines`) AS `total_backordered_lines`\n",
+                "  FROM `main`.`ccg_workshop_cdm`.`mv_backorders`\n",
+                "  WHERE `status_description` = 'Backordered'\n",
+                "  GROUP BY ALL\n",
+                "),\n",
+                "ranked_suppliers AS (\n",
+                "  SELECT `supplier_name`, MEASURE(`Count_of_Lines`) AS `backordered_lines`,\n",
+                "    RANK() OVER (ORDER BY MEASURE(`Count_of_Lines`) DESC) AS `rank`\n",
+                "  FROM `main`.`ccg_workshop_cdm`.`mv_backorders`\n",
+                "  WHERE `status_description` = 'Backordered' AND `supplier_name` IS NOT NULL\n",
+                "  GROUP BY ALL\n",
+                ")\n",
+                "SELECT t.`total_backordered_lines`, r.`supplier_name`, r.`backordered_lines`\n",
+                "FROM total_backorders t CROSS JOIN ranked_suppliers r\n",
+                "WHERE r.`rank` <= 10\n",
+                "ORDER BY r.`rank`"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "01f19c8b9757153686de1554f22c3104",
+          "question": [
+            "Which suppliers have the highest backorder dollars?"
+          ],
+          "answer": [
+            {
+              "format": "SQL",
+              "content": [
+                "SELECT `supplier_name`, `supplier_number`, MEASURE(`Backorder_Sales`) AS `backorder_sales` FROM `main`.`ccg_workshop_cdm`.`mv_backorders` GROUP BY `supplier_name`, `supplier_number` ORDER BY `backorder_sales` DESC LIMIT 10"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

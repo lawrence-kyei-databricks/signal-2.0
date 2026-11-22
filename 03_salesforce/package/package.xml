@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Account.Risk_Score__c</members>
+        <members>Account.Risk_Category__c</members>
+        <members>Account.Last_Risk_Assessment__c</members>
+        <name>CustomField</name>
+    </types>
+    <types>
+        <members>Signal2_Risk_Fields</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>Signal2_Risk_Dashboard</members>
+        <name>ApexPage</name>
+    </types>
+    <types>
+        <members>Account_Record_Page</members>
+        <name>FlexiPage</name>
+    </types>
+    <types>
+        <members>Databricks_Workspace_Embed</members>
+        <name>CspTrustedSite</name>
+    </types>
+    <version>59.0</version>
+</Package>

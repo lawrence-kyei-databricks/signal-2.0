@@ -1,0 +1,27 @@
+# Signal Account Cockpit - Databricks App
+# Resources (attached in the app config): postgres (Lakebase), warehouse, genie.
+# User authorization scope `genie`: Genie questions run with the signed-in rep's permissions.
+command:
+  - python
+  - app.py
+env:
+  - name: DATABRICKS_WAREHOUSE_ID
+    value: "148ccb90800933a1"
+  - name: GENIE_SPACE_ID
+    value: "01f19c88f94816f3808eef719283e510"
+  # "CCG - Backorder Operations & Commercial Effectiveness" - published with
+  # embed_credentials=true. The app host is already covered by the workspace's
+  # approved-domain entries (*.azure.databricksapps.com).
+  - name: DASHBOARD_ID
+    value: "01f1a72dc5a713608e84a6d9c8eff268"
+  # The `postgres` app-resource key does not auto-inject PG* / LAKEBASE_ENDPOINT
+  # the way the legacy `database` key did, so name the project explicitly and let
+  # app.py resolve host + endpoint path via the SDK.
+  - name: LAKEBASE_PROJECT
+    value: "signal-account-cockpit"
+  - name: LAKEBASE_BRANCH
+    value: "production"
+  - name: LAKEBASE_ENDPOINT_ID
+    value: "primary"
+  - name: PGDATABASE
+    value: "databricks_postgres"

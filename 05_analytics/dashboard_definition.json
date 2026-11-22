@@ -1,0 +1,3556 @@
+{
+  "datasets": [
+    {
+      "name": "commercial",
+      "displayName": "Commercial Effectiveness",
+      "asset_name": "main.ccg_workshop_cdm.mv_commercial_effectiveness"
+    },
+    {
+      "name": "funnel",
+      "displayName": "Marketing Funnel",
+      "asset_name": "main.ccg_workshop_cdm.mv_marketing_funnel"
+    },
+    {
+      "name": "backorders",
+      "displayName": "Backorders",
+      "asset_name": "main.ccg_workshop_cdm.mv_backorders"
+    },
+    {
+      "name": "revenue_forecast",
+      "displayName": "Revenue Forecast (AI)",
+      "queryLines": [
+        "WITH actuals AS (\n",
+        "  SELECT DATE_TRUNC('MONTH', `Close Date`) AS ds,\n",
+        "         MEASURE(`Closed Won Revenue`) AS revenue\n",
+        "  FROM main.ccg_workshop_cdm.mv_commercial_effectiveness\n",
+        "  GROUP BY 1\n",
+        "  HAVING ds IS NOT NULL\n",
+        "),\n",
+        "forecasted AS (\n",
+        "  SELECT * FROM ai_forecast(\n",
+        "    TABLE(actuals),\n",
+        "    horizon => '2027-03-31',\n",
+        "    time_col => 'ds',\n",
+        "    value_col => 'revenue',\n",
+        "    prediction_interval_width => 0.9,\n",
+        "    version => '1'\n",
+        "  )\n",
+        "),\n",
+        "max_date AS (SELECT MAX(ds) AS md FROM actuals)\n",
+        "SELECT ds, revenue AS value, 'Actual' AS series FROM actuals\n",
+        "UNION ALL\n",
+        "SELECT ds, revenue AS value, 'AI Forecast' AS series FROM actuals, max_date WHERE ds = md\n",
+        "UNION ALL\n",
+        "SELECT ds, revenue_forecast AS value, 'AI Forecast' AS series FROM forecasted\n",
+        "ORDER BY 1, 2"
+      ]
+    },
+    {
+      "name": "c360_summary",
+      "displayName": "Customer 360 Summary",
+      "queryLines": [
+        "SELECT\n",
+        "  `Risk Category`,\n",
+        "  `Industry`,\n",
+        "  `Region`,\n",
+        "  `Rep Name`,\n",
+        "  `Business Unit`,\n",
+        "  `Is Stale`,\n",
+        "  `Has Backorders`,\n",
+        "  MEASURE(`Account Count`) AS accounts,\n",
+        "  MEASURE(`Total Annual Revenue`) AS revenue,\n",
+        "  MEASURE(`At Risk Accounts`) AS at_risk_accounts,\n",
+        "  MEASURE(`Revenue At Risk`) AS revenue_at_risk,\n",
+        "  MEASURE(`Avg Risk Score`) AS avg_risk_score,\n",
+        "  MEASURE(`Stale Accounts`) AS stale_accounts,\n",
+        "  MEASURE(`Total Pipeline`) AS pipeline,\n",
+        "  MEASURE(`Escalated Cases`) AS escalations,\n",
+        "  MEASURE(`Backorder Lines`) AS backorders,\n",
+        "  MEASURE(`Avg Product Coverage`) AS avg_product_families,\n",
+        "  MEASURE(`Avg Backorder Pct`) AS avg_backorder_pct,\n",
+        "  MEASURE(`Total Closed Won`) AS closed_won,\n",
+        "  MEASURE(`Total Closed Lost`) AS closed_lost,\n",
+        "  MEASURE(`Open Cases`) AS open_cases\n",
+        "FROM main.ccg_workshop_cdm.mv_customer_360\n",
+        "GROUP BY ALL"
+      ]
+    },
+    {
+      "name": "c360_accounts",
+      "displayName": "Customer 360 Account Detail",
+      "queryLines": [
+        "SELECT\n",
+        "  c.account_name,\n",
+        "  c.industry,\n",
+        "  c.region,\n",
+        "  c.rep_name,\n",
+        "  c.business_unit,\n",
+        "  CAST(ROUND(r.ml_risk_score) AS INT) AS risk_score,\n",
+        "  r.days_since_last_activity,\n",
+        "  c.open_case_count,\n",
+        "  c.backorder_line_count,\n",
+        "  ROUND(c.open_pipeline_value, 0) AS pipeline_value,\n",
+        "  ROUND(c.annual_revenue, 0) AS annual_revenue,\n",
+        "  ROUND(c.total_order_value, 0) AS order_value,\n",
+        "  c.product_families_purchased,\n",
+        "  c.product_family_list,\n",
+        "  r.risk_category,\n",
+        "  r.top_risk_driver\n",
+        "FROM main.ccg_workshop_cdm.customer_360 c\n",
+        "JOIN main.ccg_workshop_cdm.account_risk_summary r ON c.sf_account_id = r.sf_account_id\n",
+        "ORDER BY r.ml_risk_score DESC"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "cb06ccc7",
+      "displayName": "Executive Summary",
+      "layout": [
+        {
+          "widget": {
+            "name": "p1_pipeline_val",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "commercial",
+                  "fields": [
+                    {
+                      "name": "measure(Pipeline Value)",
+                      "expression": "MEASURE(`Pipeline Value`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Pipeline Value"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(Pipeline Value)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "p1_won_rev",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "commercial",
+                  "fields": [
+                    {
+                      "name": "measure(Closed Won Revenue)",
+                      "expression": "MEASURE(`Closed Won Revenue`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Closed Won Revenue"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(Closed Won Revenue)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 0,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "p1_win_rate",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "commercial",
+                  "fields": [
+                    {
+                      "name": "measure(Win Rate)",
+                      "expression": "MEASURE(`Win Rate`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Win Rate"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(Win Rate)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 0,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "p1_total_leads",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "funnel",
+                  "fields": [
+                    {
+                      "name": "measure(Total Leads)",
+                      "expression": "MEASURE(`Total Leads`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Total Leads"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(Total Leads)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 0,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "p1_conv_rate",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "funnel",
+                  "fields": [
+                    {
+                      "name": "measure(Conversion Rate)",
+                      "expression": "MEASURE(`Conversion Rate`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Conversion Rate"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(Conversion Rate)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 8,
+            "y": 0,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "p1_bo_sales",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "backorders",
+                  "fields": [
+                    {
+                      "name": "measure(Backorder_Sales)",
+                      "expression": "MEASURE(`Backorder_Sales`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Backorder Sales"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(Backorder_Sales)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 10,
+            "y": 0,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "p1_filter_region",
+            "queries": [
+              {
+                "name": "dashboards/01f1a72dc5a713608e84a6d9c8eff268/datasets/01f1a72e0b9b1ab5b20c3da65ed041fb_Region",
+                "query": {
+                  "datasetName": "commercial",
+                  "fields": [
+                    {
+                      "name": "Region",
+                      "expression": "`Region`"
+                    },
+                    {
+                      "name": "Region_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": "Region"
+              },
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "Region",
+                    "queryName": "dashboards/01f1a72dc5a713608e84a6d9c8eff268/datasets/01f1a72e0b9b1ab5b20c3da65ed041fb_Region"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "p1_filter_quarter",
+            "queries": [
+              {
+                "name": "dashboards/01f1a72dc5a713608e84a6d9c8eff268/datasets/01f1a72e0b9b1ab5b20c3da65ed041fb_Close Quarter",
+                "query": {
+                  "datasetName": "commercial",
+                  "fields": [
+                    {
+                      "name": "Close Quarter",
+                      "expression": "`Close Quarter`"
+                    },
+                    {
+                      "name": "Close Quarter_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": "Close Quarter"
+              },
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "Close Quarter",
+                    "queryName": "dashboards/01f1a72dc5a713608e84a6d9c8eff268/datasets/01f1a72e0b9b1ab5b20c3da65ed041fb_Close Quarter"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 2,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "p1_region_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "commercial",
+                  "fields": [
+                    {
+                      "name": "Region",
+                      "expression": "`Region`"
+                    },
+                    {
+                      "name": "measure(Pipeline Value)",
+                      "expression": "MEASURE(`Pipeline Value`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Pipeline by Region"
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "Region",
+                  "displayName": "Region",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(Pipeline Value)",
+                  "displayName": "Pipeline Value",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "Region",
+                  "displayName": "Region",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 3,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "p1_trend_line",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "commercial",
+                  "fields": [
+                    {
+                      "name": "Close Month",
+                      "expression": "`Close Month`"
+                    },
+                    {
+                      "name": "measure(Closed Won Revenue)",
+                      "expression": "MEASURE(`Closed Won Revenue`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Monthly Revenue Trend",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "Close Month",
+                  "displayName": "Close Month",
+                  "scale": {
+                    "type": "temporal"
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(Closed Won Revenue)",
+                  "displayName": "Closed Won Revenue",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 3,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "p1_stage_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "commercial",
+                  "fields": [
+                    {
+                      "name": "Stage",
+                      "expression": "`Stage`"
+                    },
+                    {
+                      "name": "measure(Pipeline Value)",
+                      "expression": "MEASURE(`Pipeline Value`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Pipeline by Stage"
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "Stage",
+                  "displayName": "Stage",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(Pipeline Value)",
+                  "displayName": "Pipeline Value",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "Stage",
+                  "displayName": "Stage",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 8,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "p1_product_wr",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "commercial",
+                  "fields": [
+                    {
+                      "name": "Product Line",
+                      "expression": "`Product Line`"
+                    },
+                    {
+                      "name": "measure(Win Rate)",
+                      "expression": "MEASURE(`Win Rate`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Win Rate by Product Line"
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "Product Line",
+                  "displayName": "Product Line",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(Win Rate)",
+                  "displayName": "Win Rate",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "Product Line",
+                  "displayName": "Product Line",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 8,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "p1_backorder_summary",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "backorders",
+                  "fields": [
+                    {
+                      "name": "supplier_name",
+                      "expression": "`supplier_name`"
+                    },
+                    {
+                      "name": "measure(Backorder_Sales)",
+                      "expression": "MEASURE(`Backorder_Sales`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Top Backorder Suppliers"
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "measure(Backorder_Sales)",
+                  "displayName": "Backorder Sales ($)",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "y": {
+                  "fieldName": "supplier_name",
+                  "displayName": "Supplier",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "color": {
+                  "fieldName": "supplier_name",
+                  "displayName": "Supplier",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 13,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "p1_lead_funnel",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "funnel",
+                  "fields": [
+                    {
+                      "name": "Lead Source",
+                      "expression": "`Lead Source`"
+                    },
+                    {
+                      "name": "measure(Conversion Rate)",
+                      "expression": "MEASURE(`Conversion Rate`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Lead Source Effectiveness"
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "measure(Conversion Rate)",
+                  "displayName": "Conversion Rate",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "y": {
+                  "fieldName": "Lead Source",
+                  "displayName": "Lead Source",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "color": {
+                  "fieldName": "Lead Source",
+                  "displayName": "Lead Source",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 13,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "p1_forecast_chart",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "revenue_forecast",
+                  "fields": [
+                    {
+                      "name": "series",
+                      "expression": "`series`"
+                    },
+                    {
+                      "name": "ds",
+                      "expression": "`ds`"
+                    },
+                    {
+                      "name": "value",
+                      "expression": "`value`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "AI Revenue Forecast"
+              },
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "ds",
+                  "displayName": "Month",
+                  "scale": {
+                    "type": "temporal"
+                  }
+                },
+                "y": {
+                  "fieldName": "value",
+                  "displayName": "Revenue ($)",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "series",
+                  "displayName": "Series",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 18,
+            "width": 12,
+            "height": 6
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    },
+    {
+      "name": "pipeline_rep",
+      "displayName": "Pipeline & Rep Performance",
+      "layout": [
+        {
+          "widget": {
+            "name": "p2_header",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Pipeline & Sales Rep Performance\n",
+                "Drill into pipeline stages, rep effectiveness, win/loss patterns, and product line contribution. Spot coaching opportunities and competitive gaps before they impact revenue."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "p2_filter_region",
+            "queries": [
+              {
+                "name": "dashboards/01f1a72dc5a713608e84a6d9c8eff268/datasets/01f1a72e0b9b1ab5b20c3da65ed041fb_Region",
+                "query": {
+                  "datasetName": "commercial",
+                  "fields": [
+                    {
+                      "name": "Region",
+                      "expression": "`Region`"
+                    },
+                    {
+                      "name": "Region_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": "Region"
+              },
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "Region",
+                    "queryName": "dashboards/01f1a72dc5a713608e84a6d9c8eff268/datasets/01f1a72e0b9b1ab5b20c3da65ed041fb_Region"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 1,
+            "width": 4,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "p2_filter_team",
+            "queries": [
+              {
+                "name": "dashboards/01f1a72dc5a713608e84a6d9c8eff268/datasets/01f1a72e0b9b1ab5b20c3da65ed041fb_Sales Team",
+                "query": {
+                  "datasetName": "commercial",
+                  "fields": [
+                    {
+                      "name": "Sales Team",
+                      "expression": "`Sales Team`"
+                    },
+                    {
+                      "name": "Sales Team_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": "Sales Team"
+              },
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "Sales Team",
+                    "queryName": "dashboards/01f1a72dc5a713608e84a6d9c8eff268/datasets/01f1a72e0b9b1ab5b20c3da65ed041fb_Sales Team"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 1,
+            "width": 4,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "p2_filter_fc",
+            "queries": [
+              {
+                "name": "dashboards/01f1a72dc5a713608e84a6d9c8eff268/datasets/01f1a72e0b9b1ab5b20c3da65ed041fb_Forecast Category",
+                "query": {
+                  "datasetName": "commercial",
+                  "fields": [
+                    {
+                      "name": "Forecast Category",
+                      "expression": "`Forecast Category`"
+                    },
+                    {
+                      "name": "Forecast Category_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": "Forecast Category"
+              },
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "Forecast Category",
+                    "queryName": "dashboards/01f1a72dc5a713608e84a6d9c8eff268/datasets/01f1a72e0b9b1ab5b20c3da65ed041fb_Forecast Category"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 8,
+            "y": 1,
+            "width": 4,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "p2_stage_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "commercial",
+                  "fields": [
+                    {
+                      "name": "Stage",
+                      "expression": "`Stage`"
+                    },
+                    {
+                      "name": "measure(Pipeline Value)",
+                      "expression": "MEASURE(`Pipeline Value`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Pipeline by Stage"
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "Stage",
+                  "displayName": "Stage",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(Pipeline Value)",
+                  "displayName": "Pipeline Value",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "Stage",
+                  "displayName": "Stage",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "p2_winloss_pie",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "commercial",
+                  "fields": [
+                    {
+                      "name": "measure(Deal Count)",
+                      "expression": "MEASURE(`Deal Count`)"
+                    },
+                    {
+                      "name": "Win Loss Reason",
+                      "expression": "`Win Loss Reason`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Win/Loss Reason Analysis"
+              },
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "measure(Deal Count)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Deal Count"
+                },
+                "color": {
+                  "fieldName": "Win Loss Reason",
+                  "displayName": "Win Loss Reason",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 2,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "p2_product_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "commercial",
+                  "fields": [
+                    {
+                      "name": "Product Line",
+                      "expression": "`Product Line`"
+                    },
+                    {
+                      "name": "measure(Closed Won Revenue)",
+                      "expression": "MEASURE(`Closed Won Revenue`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Product Line Performance"
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "Product Line",
+                  "displayName": "Product Line",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(Closed Won Revenue)",
+                  "displayName": "Closed Won Revenue",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "Product Line",
+                  "displayName": "Product Line",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 12,
+            "width": 12,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "p2_rep_table",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "commercial",
+                  "fields": [
+                    {
+                      "name": "Sales Rep",
+                      "expression": "`Sales Rep`"
+                    },
+                    {
+                      "name": "Sales Team",
+                      "expression": "`Sales Team`"
+                    },
+                    {
+                      "name": "measure(Pipeline Value)",
+                      "expression": "MEASURE(`Pipeline Value`)"
+                    },
+                    {
+                      "name": "measure(Closed Won Revenue)",
+                      "expression": "MEASURE(`Closed Won Revenue`)"
+                    },
+                    {
+                      "name": "measure(Win Rate)",
+                      "expression": "MEASURE(`Win Rate`)"
+                    },
+                    {
+                      "name": "measure(Avg Sales Cycle)",
+                      "expression": "MEASURE(`Avg Sales Cycle`)"
+                    },
+                    {
+                      "name": "measure(Deal Count)",
+                      "expression": "MEASURE(`Deal Count`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Sales Rep Performance"
+              },
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "Sales Rep"
+                  },
+                  {
+                    "fieldName": "Sales Team"
+                  },
+                  {
+                    "fieldName": "measure(Pipeline Value)"
+                  },
+                  {
+                    "fieldName": "measure(Closed Won Revenue)"
+                  },
+                  {
+                    "fieldName": "measure(Win Rate)"
+                  },
+                  {
+                    "fieldName": "measure(Avg Sales Cycle)"
+                  },
+                  {
+                    "fieldName": "measure(Deal Count)"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 7,
+            "width": 12,
+            "height": 5
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    },
+    {
+      "name": "marketing_funnel",
+      "displayName": "Marketing Funnel",
+      "layout": [
+        {
+          "widget": {
+            "name": "p3_header",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Marketing Funnel Analytics\n",
+                "From lead generation through conversion and disqualification - identify the highest-converting channels and optimize marketing spend across LATAM."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "p3_filter_source",
+            "queries": [
+              {
+                "name": "dashboards/01f1a72dc5a713608e84a6d9c8eff268/datasets/01f1a72e0c021645bc70b985384cc73b_Lead Source",
+                "query": {
+                  "datasetName": "funnel",
+                  "fields": [
+                    {
+                      "name": "Lead Source",
+                      "expression": "`Lead Source`"
+                    },
+                    {
+                      "name": "Lead Source_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": "Lead Source"
+              },
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "Lead Source",
+                    "queryName": "dashboards/01f1a72dc5a713608e84a6d9c8eff268/datasets/01f1a72e0c021645bc70b985384cc73b_Lead Source"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 1,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "p3_filter_rating",
+            "queries": [
+              {
+                "name": "dashboards/01f1a72dc5a713608e84a6d9c8eff268/datasets/01f1a72e0c021645bc70b985384cc73b_Lead Rating",
+                "query": {
+                  "datasetName": "funnel",
+                  "fields": [
+                    {
+                      "name": "Lead Rating",
+                      "expression": "`Lead Rating`"
+                    },
+                    {
+                      "name": "Lead Rating_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": "Lead Rating"
+              },
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "Lead Rating",
+                    "queryName": "dashboards/01f1a72dc5a713608e84a6d9c8eff268/datasets/01f1a72e0c021645bc70b985384cc73b_Lead Rating"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 1,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "p3_source_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "funnel",
+                  "fields": [
+                    {
+                      "name": "Lead Source",
+                      "expression": "`Lead Source`"
+                    },
+                    {
+                      "name": "measure(Total Leads)",
+                      "expression": "MEASURE(`Total Leads`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Leads by Source"
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "Lead Source",
+                  "displayName": "Lead Source",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(Total Leads)",
+                  "displayName": "Total Leads",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "Lead Source",
+                  "displayName": "Lead Source",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 4,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "p3_rating_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "funnel",
+                  "fields": [
+                    {
+                      "name": "Lead Rating",
+                      "expression": "`Lead Rating`"
+                    },
+                    {
+                      "name": "measure(Conversion Rate)",
+                      "expression": "MEASURE(`Conversion Rate`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Conversion Rate by Rating"
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "Lead Rating",
+                  "displayName": "Lead Rating",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(Conversion Rate)",
+                  "displayName": "Conversion Rate",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "Lead Rating",
+                  "displayName": "Lead Rating",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 4,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "p3_status_pie",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "funnel",
+                  "fields": [
+                    {
+                      "name": "measure(Total Leads)",
+                      "expression": "MEASURE(`Total Leads`)"
+                    },
+                    {
+                      "name": "Lead Status",
+                      "expression": "`Lead Status`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Lead Status Distribution"
+              },
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "measure(Total Leads)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Total Leads"
+                },
+                "color": {
+                  "fieldName": "Lead Status",
+                  "displayName": "Lead Status",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 9,
+            "width": 4,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "p3_trend_line",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "funnel",
+                  "fields": [
+                    {
+                      "name": "Created Month",
+                      "expression": "`Created Month`"
+                    },
+                    {
+                      "name": "measure(Total Leads)",
+                      "expression": "MEASURE(`Total Leads`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Monthly Lead Trend",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "Created Month",
+                  "displayName": "Created Month",
+                  "scale": {
+                    "type": "temporal"
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(Total Leads)",
+                  "displayName": "Total Leads",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 9,
+            "width": 8,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "p3_disqual_table",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "funnel",
+                  "fields": [
+                    {
+                      "name": "Disqualification Reason",
+                      "expression": "`Disqualification Reason`"
+                    },
+                    {
+                      "name": "measure(Disqualified Leads)",
+                      "expression": "MEASURE(`Disqualified Leads`)"
+                    },
+                    {
+                      "name": "measure(Disqualification Rate)",
+                      "expression": "MEASURE(`Disqualification Rate`)"
+                    },
+                    {
+                      "name": "measure(Total Leads)",
+                      "expression": "MEASURE(`Total Leads`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Disqualification Analysis"
+              },
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "Disqualification Reason"
+                  },
+                  {
+                    "fieldName": "measure(Disqualified Leads)"
+                  },
+                  {
+                    "fieldName": "measure(Disqualification Rate)"
+                  },
+                  {
+                    "fieldName": "measure(Total Leads)"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 14,
+            "width": 12,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "p3_kpi_leads",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "funnel",
+                  "fields": [
+                    {
+                      "name": "measure(Total Leads)",
+                      "expression": "MEASURE(`Total Leads`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Total Leads"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(Total Leads)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "p3_kpi_converted",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "funnel",
+                  "fields": [
+                    {
+                      "name": "measure(Converted Leads)",
+                      "expression": "MEASURE(`Converted Leads`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Converted Leads"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(Converted Leads)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 2,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "p3_kpi_convrate",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "funnel",
+                  "fields": [
+                    {
+                      "name": "measure(Conversion Rate)",
+                      "expression": "MEASURE(`Conversion Rate`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Conversion Rate"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(Conversion Rate)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 2,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "p3_kpi_days",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "funnel",
+                  "fields": [
+                    {
+                      "name": "measure(Avg Days to Convert)",
+                      "expression": "MEASURE(`Avg Days to Convert`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Avg Days to Convert"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(Avg Days to Convert)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 9,
+            "y": 2,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "p3_pivot_source_rating",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "funnel",
+                  "fields": [
+                    {
+                      "name": "Lead Source",
+                      "expression": "`Lead Source`"
+                    },
+                    {
+                      "name": "Lead Rating",
+                      "expression": "`Lead Rating`"
+                    },
+                    {
+                      "name": "measure(Total Leads)",
+                      "expression": "MEASURE(`Total Leads`)"
+                    }
+                  ],
+                  "cubeGroupingSets": {
+                    "sets": [
+                      {
+                        "fieldNames": [
+                          "Lead Source"
+                        ]
+                      },
+                      {
+                        "fieldNames": [
+                          "Lead Rating"
+                        ]
+                      }
+                    ]
+                  },
+                  "disaggregated": false,
+                  "orders": [
+                    {
+                      "direction": "ASC",
+                      "expression": "`Lead Source`"
+                    },
+                    {
+                      "direction": "ASC",
+                      "expression": "`Lead Rating`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Leads by Source x Rating"
+              },
+              "version": 3,
+              "widgetType": "pivot",
+              "encodings": {
+                "rows": [
+                  {
+                    "fieldName": "Lead Source"
+                  }
+                ],
+                "columns": [
+                  {
+                    "fieldName": "Lead Rating"
+                  }
+                ],
+                "cell": {
+                  "type": "single-cell",
+                  "fieldName": "measure(Total Leads)",
+                  "cellType": "text"
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 19,
+            "width": 12,
+            "height": 5
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    },
+    {
+      "name": "backorder_ops",
+      "displayName": "Backorder Operations",
+      "layout": [
+        {
+          "widget": {
+            "name": "p4_header",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Backorder Operations\n",
+                "Real-time backorder exposure powered by the CCG Common Data Model metric view. Same metric view drives the Genie agent, this dashboard, and the Databricks App."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "p4_bo_sales",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "backorders",
+                  "fields": [
+                    {
+                      "name": "measure(Backorder_Sales)",
+                      "expression": "MEASURE(`Backorder_Sales`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Backorder Sales"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(Backorder_Sales)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 1,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "p4_bo_qty",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "backorders",
+                  "fields": [
+                    {
+                      "name": "measure(Backorder_Quantity)",
+                      "expression": "MEASURE(`Backorder_Quantity`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Backorder Quantity"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(Backorder_Quantity)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 1,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "p4_bo_orders",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "backorders",
+                  "fields": [
+                    {
+                      "name": "measure(Count_of_Orders)",
+                      "expression": "MEASURE(`Count_of_Orders`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Order Count"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(Count_of_Orders)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 1,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "p4_bo_lines",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "backorders",
+                  "fields": [
+                    {
+                      "name": "measure(Count_of_Lines)",
+                      "expression": "MEASURE(`Count_of_Lines`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Line Count"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(Count_of_Lines)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 9,
+            "y": 1,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "p4_plant_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "backorders",
+                  "fields": [
+                    {
+                      "name": "plant_code",
+                      "expression": "`plant_code`"
+                    },
+                    {
+                      "name": "measure(Backorder_Sales)",
+                      "expression": "MEASURE(`Backorder_Sales`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Backorder Sales by Plant"
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "plant_code",
+                  "displayName": "plant_code",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(Backorder_Sales)",
+                  "displayName": "Backorder_Sales",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "plant_code",
+                  "displayName": "plant_code",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 3,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "p4_status_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "backorders",
+                  "fields": [
+                    {
+                      "name": "status_description",
+                      "expression": "`status_description`"
+                    },
+                    {
+                      "name": "measure(Backorder_Quantity)",
+                      "expression": "MEASURE(`Backorder_Quantity`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Backorder Quantity by Status"
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "status_description",
+                  "displayName": "status_description",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(Backorder_Quantity)",
+                  "displayName": "Backorder_Quantity",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "status_description",
+                  "displayName": "status_description",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 3,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "p4_cust_table",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "backorders",
+                  "fields": [
+                    {
+                      "name": "name_cust_desc_line_1",
+                      "expression": "`name_cust_desc_line_1`"
+                    },
+                    {
+                      "name": "measure(Count_of_Orders)",
+                      "expression": "MEASURE(`Count_of_Orders`)"
+                    },
+                    {
+                      "name": "measure(Backorder_Quantity)",
+                      "expression": "MEASURE(`Backorder_Quantity`)"
+                    },
+                    {
+                      "name": "measure(Backorder_Sales)",
+                      "expression": "MEASURE(`Backorder_Sales`)"
+                    },
+                    {
+                      "name": "measure(Count_of_Lines)",
+                      "expression": "MEASURE(`Count_of_Lines`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Top Backorder Customers"
+              },
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "name_cust_desc_line_1"
+                  },
+                  {
+                    "fieldName": "measure(Count_of_Orders)"
+                  },
+                  {
+                    "fieldName": "measure(Backorder_Quantity)"
+                  },
+                  {
+                    "fieldName": "measure(Backorder_Sales)"
+                  },
+                  {
+                    "fieldName": "measure(Count_of_Lines)"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 9,
+            "width": 12,
+            "height": 5
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    },
+    {
+      "name": "customer_360_risk",
+      "displayName": "Customer 360 - Risk Intelligence",
+      "layout": [
+        {
+          "widget": {
+            "name": "c360-title",
+            "multilineTextboxSpec": {
+              "lines": [
+                "# Signal 2.0"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 4,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "c360-subtitle",
+            "multilineTextboxSpec": {
+              "lines": [
+                "*Customer 360 Risk Intelligence* - Thermo Fisher Scientific"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 4,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "c360-filter-industry",
+            "queries": [
+              {
+                "name": "fq",
+                "query": {
+                  "datasetName": "c360_summary",
+                  "fields": [
+                    {
+                      "name": "Industry",
+                      "expression": "`Industry`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "Industry",
+                    "displayName": "Industry",
+                    "queryName": "fq"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Industry"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 0,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "c360-filter-region",
+            "queries": [
+              {
+                "name": "fq",
+                "query": {
+                  "datasetName": "c360_summary",
+                  "fields": [
+                    {
+                      "name": "Region",
+                      "expression": "`Region`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "Region",
+                    "displayName": "Region",
+                    "queryName": "fq"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Region"
+              }
+            }
+          },
+          "position": {
+            "x": 5,
+            "y": 0,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "c360-kpi-accounts",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "c360_summary",
+                  "fields": [
+                    {
+                      "name": "sum(accounts)",
+                      "expression": "SUM(`accounts`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Total Accounts",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(accounts)",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact"
+                  },
+                  "displayName": "Total Accounts"
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 3,
+            "width": 1,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "c360-kpi-revenue",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "c360_summary",
+                  "fields": [
+                    {
+                      "name": "sum(revenue)",
+                      "expression": "SUM(`revenue`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Annual Revenue",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(revenue)",
+                  "format": {
+                    "type": "number-currency",
+                    "abbreviation": "compact",
+                    "currencyCode": "USD",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 0
+                    }
+                  },
+                  "displayName": "Annual Revenue"
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 3,
+            "width": 1,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "c360-kpi-at-risk",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "c360_summary",
+                  "fields": [
+                    {
+                      "name": "sum(at_risk_accounts)",
+                      "expression": "SUM(`at_risk_accounts`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "At-Risk Accounts",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(at_risk_accounts)",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact"
+                  },
+                  "displayName": "At-Risk Accounts"
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 3,
+            "width": 1,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "c360-kpi-rev-risk",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "c360_summary",
+                  "fields": [
+                    {
+                      "name": "sum(revenue_at_risk)",
+                      "expression": "SUM(`revenue_at_risk`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Revenue At Risk",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(revenue_at_risk)",
+                  "format": {
+                    "type": "number-currency",
+                    "abbreviation": "compact",
+                    "currencyCode": "USD",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 0
+                    }
+                  },
+                  "displayName": "Revenue At Risk"
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 3,
+            "width": 1,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "c360-kpi-avg-risk",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "c360_summary",
+                  "fields": [
+                    {
+                      "name": "avg(avg_risk_score)",
+                      "expression": "AVG(`avg_risk_score`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Avg Risk Score",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "avg(avg_risk_score)",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "none",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 0
+                    }
+                  },
+                  "displayName": "Avg Risk Score"
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 3,
+            "width": 1,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "c360-kpi-stale",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "c360_summary",
+                  "fields": [
+                    {
+                      "name": "sum(stale_accounts)",
+                      "expression": "SUM(`stale_accounts`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Stale Accounts",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(stale_accounts)",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact"
+                  },
+                  "displayName": "Stale Accounts (90+ days)"
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 5,
+            "y": 3,
+            "width": 1,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "c360-risk-bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "c360_summary",
+                  "fields": [
+                    {
+                      "name": "Risk Category",
+                      "expression": "`Risk Category`"
+                    },
+                    {
+                      "name": "sum(accounts)",
+                      "expression": "SUM(`accounts`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "Risk Category",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Risk Category"
+                },
+                "y": {
+                  "fieldName": "sum(accounts)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Accounts"
+                },
+                "color": {
+                  "fieldName": "Risk Category",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "custom-order",
+                      "orderedValues": [
+                        "High",
+                        "Medium",
+                        "Low"
+                      ]
+                    }
+                  },
+                  "displayName": "Risk Category"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Accounts by Risk Category"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 7,
+            "width": 2,
+            "height": 8
+          }
+        },
+        {
+          "widget": {
+            "name": "c360-rev-risk-bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "c360_summary",
+                  "fields": [
+                    {
+                      "name": "Risk Category",
+                      "expression": "`Risk Category`"
+                    },
+                    {
+                      "name": "sum(revenue)",
+                      "expression": "SUM(`revenue`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "Risk Category",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Risk Category"
+                },
+                "y": {
+                  "fieldName": "sum(revenue)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Revenue"
+                },
+                "color": {
+                  "fieldName": "Risk Category",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "custom-order",
+                      "orderedValues": [
+                        "High",
+                        "Medium",
+                        "Low"
+                      ]
+                    }
+                  },
+                  "displayName": "Risk"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Revenue by Risk Category"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 7,
+            "width": 2,
+            "height": 8
+          }
+        },
+        {
+          "widget": {
+            "name": "c360-pipeline-region",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "c360_summary",
+                  "fields": [
+                    {
+                      "name": "Region",
+                      "expression": "`Region`"
+                    },
+                    {
+                      "name": "Risk Category",
+                      "expression": "`Risk Category`"
+                    },
+                    {
+                      "name": "sum(pipeline)",
+                      "expression": "SUM(`pipeline`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "Region",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Region"
+                },
+                "y": {
+                  "fieldName": "sum(pipeline)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Pipeline Value"
+                },
+                "color": {
+                  "fieldName": "Risk Category",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "custom-order",
+                      "orderedValues": [
+                        "High",
+                        "Medium",
+                        "Low"
+                      ]
+                    }
+                  },
+                  "displayName": "Risk"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Pipeline by Region"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 7,
+            "width": 2,
+            "height": 8
+          }
+        },
+        {
+          "widget": {
+            "name": "c360-section-rep",
+            "multilineTextboxSpec": {
+              "lines": [
+                "### Rep Performance Scorecard"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 15,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "c360-rep-table",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "c360_summary",
+                  "fields": [
+                    {
+                      "name": "Rep Name",
+                      "expression": "`Rep Name`"
+                    },
+                    {
+                      "name": "sum(accounts)",
+                      "expression": "SUM(`accounts`)"
+                    },
+                    {
+                      "name": "sum(revenue)",
+                      "expression": "SUM(`revenue`)"
+                    },
+                    {
+                      "name": "sum(pipeline)",
+                      "expression": "SUM(`pipeline`)"
+                    },
+                    {
+                      "name": "avg(avg_risk_score)",
+                      "expression": "AVG(`avg_risk_score`)"
+                    },
+                    {
+                      "name": "sum(open_cases)",
+                      "expression": "SUM(`open_cases`)"
+                    },
+                    {
+                      "name": "sum(backorders)",
+                      "expression": "SUM(`backorders`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "Rep Name",
+                    "displayName": "Sales Rep"
+                  },
+                  {
+                    "fieldName": "sum(accounts)",
+                    "displayName": "Accounts"
+                  },
+                  {
+                    "fieldName": "sum(revenue)",
+                    "displayName": "Revenue"
+                  },
+                  {
+                    "fieldName": "sum(pipeline)",
+                    "displayName": "Pipeline"
+                  },
+                  {
+                    "fieldName": "avg(avg_risk_score)",
+                    "displayName": "Avg Risk"
+                  },
+                  {
+                    "fieldName": "sum(open_cases)",
+                    "displayName": "Open Cases"
+                  },
+                  {
+                    "fieldName": "sum(backorders)",
+                    "displayName": "Backorders"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": false,
+                "title": ""
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 16,
+            "width": 6,
+            "height": 9
+          }
+        },
+        {
+          "widget": {
+            "name": "c360-section-accounts",
+            "multilineTextboxSpec": {
+              "lines": [
+                "### Account Risk Heatmap"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 25,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "c360-account-heatmap",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "c360_accounts",
+                  "fields": [
+                    {
+                      "name": "account_name",
+                      "expression": "`account_name`"
+                    },
+                    {
+                      "name": "industry",
+                      "expression": "`industry`"
+                    },
+                    {
+                      "name": "region",
+                      "expression": "`region`"
+                    },
+                    {
+                      "name": "risk_score",
+                      "expression": "`risk_score`"
+                    },
+                    {
+                      "name": "days_since_last_activity",
+                      "expression": "`days_since_last_activity`"
+                    },
+                    {
+                      "name": "annual_revenue",
+                      "expression": "`annual_revenue`"
+                    },
+                    {
+                      "name": "open_case_count",
+                      "expression": "`open_case_count`"
+                    },
+                    {
+                      "name": "backorder_line_count",
+                      "expression": "`backorder_line_count`"
+                    },
+                    {
+                      "name": "pipeline_value",
+                      "expression": "`pipeline_value`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "account_name",
+                    "displayName": "Account"
+                  },
+                  {
+                    "fieldName": "industry",
+                    "displayName": "Industry"
+                  },
+                  {
+                    "fieldName": "region",
+                    "displayName": "Region"
+                  },
+                  {
+                    "fieldName": "risk_score",
+                    "displayName": "Risk Score"
+                  },
+                  {
+                    "fieldName": "days_since_last_activity",
+                    "displayName": "Days Inactive"
+                  },
+                  {
+                    "fieldName": "annual_revenue",
+                    "displayName": "Revenue"
+                  },
+                  {
+                    "fieldName": "open_case_count",
+                    "displayName": "Open Cases"
+                  },
+                  {
+                    "fieldName": "backorder_line_count",
+                    "displayName": "Backorders"
+                  },
+                  {
+                    "fieldName": "pipeline_value",
+                    "displayName": "Pipeline"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": false,
+                "title": ""
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 26,
+            "width": 6,
+            "height": 10
+          }
+        },
+        {
+          "widget": {
+            "name": "c360-section-ops",
+            "multilineTextboxSpec": {
+              "lines": [
+                "### Operational Health"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 36,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "c360-product-coverage",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "c360_summary",
+                  "fields": [
+                    {
+                      "name": "Industry",
+                      "expression": "`Industry`"
+                    },
+                    {
+                      "name": "avg(avg_product_families)",
+                      "expression": "AVG(`avg_product_families`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "Industry",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Industry"
+                },
+                "y": {
+                  "fieldName": "avg(avg_product_families)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Avg Product Families"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Product Coverage by Industry (Max 8)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 37,
+            "width": 2,
+            "height": 8
+          }
+        },
+        {
+          "widget": {
+            "name": "c360-cases-region",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "c360_summary",
+                  "fields": [
+                    {
+                      "name": "Region",
+                      "expression": "`Region`"
+                    },
+                    {
+                      "name": "sum(open_cases)",
+                      "expression": "SUM(`open_cases`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "Region",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Region"
+                },
+                "y": {
+                  "fieldName": "sum(open_cases)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Open Cases"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Open Cases by Region"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 37,
+            "width": 2,
+            "height": 8
+          }
+        },
+        {
+          "widget": {
+            "name": "c360-backorder-region",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "c360_summary",
+                  "fields": [
+                    {
+                      "name": "Region",
+                      "expression": "`Region`"
+                    },
+                    {
+                      "name": "avg(avg_backorder_pct)",
+                      "expression": "AVG(`avg_backorder_pct`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "Region",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Region"
+                },
+                "y": {
+                  "fieldName": "avg(avg_backorder_pct)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Avg Backorder %"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Backorder Impact by Region"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 37,
+            "width": 2,
+            "height": 8
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS"
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "canvasBackgroundColor": {
+        "light": "#F4F6F9",
+        "dark": "#1A1D21"
+      },
+      "widgetBackgroundColor": {
+        "light": "#FFFFFF",
+        "dark": "#23272E"
+      },
+      "widgetBorderColor": {
+        "light": "#E2E6EC",
+        "dark": "#353A42"
+      },
+      "fontColor": {
+        "light": "#11171C",
+        "dark": "#E8ECF0"
+      },
+      "selectionColor": {
+        "light": "#003B5C",
+        "dark": "#00B4D8"
+      },
+      "visualizationColors": [
+        "#003B5C",
+        "#E84855",
+        "#2BAE66",
+        "#F9A826",
+        "#6C63FF",
+        "#00B4D8",
+        "#FF6B6B",
+        "#48BFE3",
+        "#8338EC",
+        "#FB5607"
+      ],
+      "widgetHeaderAlignment": "LEFT",
+      "textBoxVerticalAlign": "VERTICAL_ALIGN_CENTER",
+      "widgetPadding": 12,
+      "widgetMargin": 4,
+      "widgetCornerRadius": 8,
+      "widgetShadow": 10,
+      "continuousGradient": {
+        "lightMode": {
+          "fromCategoricalIndex": 5
+        },
+        "darkMode": {
+          "fromCategoricalIndex": 5
+        }
+      },
+      "fontSettings": {
+        "base": {
+          "fontFamily": "DM Sans",
+          "fontSize": 13
+        },
+        "widgetTitle": {
+          "fontFamily": "DM Sans",
+          "fontSize": 14,
+          "fontWeight": 600
+        },
+        "fieldTitle": {
+          "fontFamily": "DM Sans",
+          "fontWeight": 500
+        }
+      }
+    },
+    "genieSpace": {
+      "isEnabled": true,
+      "overrideId": "01f19c88f94816f3808eef719283e510",
+      "enablementMode": "ENABLED"
+    },
+    "applyModeEnabled": false
+  }
+}

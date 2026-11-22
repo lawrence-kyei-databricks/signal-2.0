@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fields>
+        <fullName>Last_Risk_Assessment__c</fullName>
+        <description>Timestamp of last ML risk scoring run</description>
+        <externalId>false</externalId>
+        <label>Last Risk Assessment</label>
+        <required>false</required>
+        <trackFeedHistory>false</trackFeedHistory>
+        <type>DateTime</type>
+    </fields>
+    <fields>
+        <fullName>Risk_Category__c</fullName>
+        <description>Risk tier derived from ML risk score</description>
+        <externalId>false</externalId>
+        <label>Risk Category</label>
+        <length>10</length>
+        <required>false</required>
+        <trackFeedHistory>false</trackFeedHistory>
+        <type>Text</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>Risk_Score__c</fullName>
+        <description>ML-predicted account risk score (0-100) from Databricks</description>
+        <externalId>false</externalId>
+        <label>Risk Score</label>
+        <precision>5</precision>
+        <required>false</required>
+        <scale>1</scale>
+        <trackFeedHistory>false</trackFeedHistory>
+        <type>Number</type>
+        <unique>false</unique>
+    </fields>
+</CustomObject>

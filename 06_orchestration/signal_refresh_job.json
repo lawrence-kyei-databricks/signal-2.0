@@ -1,0 +1,44 @@
+{
+  "name": "Signal 2.0 - Account Risk Refresh",
+  "description": "Customer 360 gold pipeline -> score accounts with account_risk_model@champion, AI briefings, Salesforce writeback, Lakebase sync. Defined in signal-2.0/06_orchestration.",
+  "max_concurrent_runs": 1,
+  "tags": {
+    "project": "signal-2.0",
+    "owner": "lawrence.kyei"
+  },
+  "email_notifications": {
+    "on_failure": [
+      "lawrence.kyei@databricks.com"
+    ]
+  },
+  "tasks": [
+    {
+      "task_key": "refresh_customer_360",
+      "pipeline_task": {
+        "pipeline_id": "46e9e7c6-339e-4dff-864a-2a633144d724",
+        "full_refresh": false
+      }
+    },
+    {
+      "task_key": "score_and_brief",
+      "depends_on": [
+        {
+          "task_key": "refresh_customer_360"
+        }
+      ],
+      "notebook_task": {
+        "notebook_path": "/Users/lawrence.kyei@databricks.com/thermofisher/CCG/signal-2.0/02_ml/03_score_and_brief",
+        "source": "WORKSPACE"
+      },
+      "timeout_seconds": 3600
+    }
+  ],
+  "schedule": {
+    "quartz_cron_expression": "0 0 6 ? * MON",
+    "timezone_id": "America/New_York",
+    "pause_status": "PAUSED"
+  },
+  "queue": {
+    "enabled": true
+  }
+}
