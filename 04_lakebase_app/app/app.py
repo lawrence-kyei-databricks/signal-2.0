@@ -11,6 +11,7 @@ principal holds SELECT+INSERT and deliberately lacks UPDATE/DELETE, so rep
 decisions and audit rows are append-only at the database level.
 """
 import json
+import re
 import os
 import threading
 import time
@@ -134,6 +135,28 @@ def user_auth_headers(request: Request) -> dict:
     token = request.headers.get("x-forwarded-access-token")
     return {"Authorization": f"Bearer {token}"} if token else w.config.authenticate()
 
+
+
+READ_ONLY_SQL = re.compile(r"^\s*(WITH|SELECT)\b", re.I)
+
+
+def genie_result(sql: str, request: Request, max_rows: int = 200) -> dict | None:
+    """Re-run Genie's final read-only query as the signed-in rep (user scope `sql`) so the UI can show
+    the real result table and a chart, instead of Genie's text placeholder."""
+    if not sql or not READ_ONLY_SQL.match(sql) or ";" in sql.strip().rstrip(";"):
+        return None
+    r = requests.post(f"{HOST}/api/2.0/sql/statements", timeout=60,
+                      headers={**user_auth_headers(request), "Content-Type": "application/json"},
+                      json={"warehouse_id": WAREHOUSE_ID, "statement": sql.strip().rstrip(";"),
+                            "wait_timeout": "30s", "row_limit": max_rows, "disposition": "INLINE", "format": "JSON_ARRAY"})
+    if r.status_code >= 400:
+        return {"error": f"result query returned {r.status_code}"}
+    j = r.json()
+    if j.get("status", {}).get("state") != "SUCCEEDED":
+        return {"error": j.get("status", {}).get("state", "unknown")}
+    cols = [{"name": c["name"], "type": c.get("type_name", "STRING")} for c in j["manifest"]["schema"]["columns"]]
+    return {"columns": cols, "rows": (j.get("result") or {}).get("data_array") or [],
+            "truncated": bool(j["manifest"].get("truncated"))}
 
 # ═══════════════════════════════ API ══════════════════════════════════════
 
@@ -431,8 +454,14 @@ def genie_ask(body: AskIn, request: Request):
     # them and fall back to the deltas only if no message item arrived.
     answer = ("\n\n".join(final_texts.values()) or "".join(deltas)).strip()
 
+    try:
+        result = genie_result(sql_queries[-1], request) if sql_queries else None
+    except Exception as exc:                      # the answer text is still useful without the table
+        result = {"error": f"{type(exc).__name__}"}
+
     return {"answer": answer or "(no text returned)",
             "sql": sql_queries,
+            "result": result,
             "conversation_id": conversation_id,
             "execution_mode": "FLASH",
             "elapsed_ms": round((time.perf_counter() - started) * 1000)}

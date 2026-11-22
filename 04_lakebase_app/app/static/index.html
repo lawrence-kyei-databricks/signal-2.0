@@ -96,6 +96,14 @@
   .flash{display:inline-block;background:rgba(91,141,239,.16);color:var(--accent);
          padding:1px 7px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.4px}
   code.mono{font-family:ui-monospace,monospace;font-size:11px;color:var(--mute)}
+
+  .gcode{background:#0f172a;color:#e2e8f0;padding:10px 12px;border-radius:8px;overflow:auto;font-size:12px;line-height:1.35;white-space:pre}
+  .gres{margin-top:10px;overflow:auto}
+  .gchart{margin-top:10px;max-width:640px;display:block}
+  .gchart .gct{font-size:12px;font-weight:600;fill:#334155}
+  .gchart .gcl{font-size:11px;fill:#334155}
+  .gchart .gcv{font-size:11px;fill:#64748b}
+  .gchart .gcb{fill:#2563eb}
 </style>
 </head>
 <body>
@@ -218,6 +226,15 @@ function renderMd(raw){
     .replace(/(^|[^*])\*([^*]+)\*(?!\*)/g, '$1<i>$2</i>')
     .replace(/`([^`]+)`/g, '<code class="mono">$1</code>');
 
+  // Fenced code blocks (``` or ``), kept verbatim so ASCII layouts keep their line breaks.
+  const fences = [];
+  t = t.replace(/(`{2,3})[a-zA-Z]*\n?([\s\S]*?)\1/g, (m, f, body) => {
+    fences.push('<pre class="gcode">' + body.replace(/^\n+|\n+$/g, '') + '</pre>');
+    return '\n@@FENCE' + (fences.length - 1) + '@@\n';
+  });
+  // Genie points at its result set with a [Query results] link; the real table is rendered below the answer.
+  t = t.replace(/\[(Query results?|View results?)\](\([^)]*\))?/gi, '<i>(see results below)</i>');
+
   const out = [];
   const lines = t.split('\n');
   let i = 0;
@@ -255,6 +272,9 @@ function renderMd(raw){
         items.map(x => '<li>' + x + '</li>').join('') + '</' + (ordered ? 'ol' : 'ul') + '>');
       continue;
     }
+
+    const fm = line.match(/^@@FENCE(\d+)@@$/);
+    if (fm){ out.push(fences[+fm[1]]); i++; continue; }
 
     if (line.trim() === ''){ i++; continue; }
 
@@ -420,6 +440,36 @@ document.querySelectorAll('.chip').forEach(c => c.onclick = () => { $('#q').valu
 $('#send').onclick = ask;
 $('#q').onkeydown = e => { if (e.key === 'Enter') ask(); };
 
+function renderResult(res){
+  if (!res) return '';
+  if (res.error) return '<div class="meta">Result table unavailable: ' + esc(res.error) + '</div>';
+  const cols = res.columns || [], rows = res.rows || [];
+  if (!cols.length || !rows.length) return '';
+  const isNum = t => /INT|LONG|DOUBLE|FLOAT|DECIMAL|SHORT|BYTE/i.test(t || '');
+  const fmt = (v, t) => v == null ? '' : (isNum(t) && !isNaN(+v)
+      ? (+v).toLocaleString(undefined, {maximumFractionDigits: 1}) : esc(String(v)));
+  const shown = rows.slice(0, 50);
+  let h = '<div class="gres"><table class="gt"><thead><tr>' + cols.map(c => '<th>' + esc(c.name) + '</th>').join('') +
+    '</tr></thead><tbody>' + shown.map(r => '<tr>' + r.map((v, j) =>
+      '<td' + (isNum(cols[j].type) ? ' class="num"' : '') + '>' + fmt(v, cols[j].type) + '</td>').join('') + '</tr>').join('') +
+    '</tbody></table>' + (rows.length > shown.length || res.truncated ? '<div class="meta">Showing ' + shown.length + ' of ' + rows.length + (res.truncated ? '+' : '') + ' rows</div>' : '');
+  // Chart when there is one label column and a numeric column (first numeric that is not the label).
+  const lab = cols.findIndex(c => !isNum(c.type));
+  const val = cols.findIndex((c, j) => j !== lab && isNum(c.type));
+  if (lab >= 0 && val >= 0 && rows.length >= 2){
+    const data = shown.slice(0, 20).map(r => ({k: String(r[lab] ?? ''), v: +r[val] || 0}));
+    const max = Math.max(...data.map(d => d.v), 0) || 1, rowH = 22, labW = 210, barW = 300, W = labW + barW + 80;
+    h += '<svg class="gchart" viewBox="0 0 ' + W + ' ' + (data.length * rowH + 28) + '" width="100%" role="img" aria-label="' + esc(cols[val].name) + ' by ' + esc(cols[lab].name) + '">' +
+      '<text x="0" y="14" class="gct">' + esc(cols[val].name) + ' by ' + esc(cols[lab].name) + '</text>' +
+      data.map((d, j) => { const y = 24 + j * rowH, w = Math.max(2, d.v / max * barW);
+        return '<text x="' + (labW - 6) + '" y="' + (y + 14) + '" text-anchor="end" class="gcl">' + esc(d.k.length > 30 ? d.k.slice(0, 29) + '...' : d.k) + '</text>' +
+               '<rect x="' + labW + '" y="' + (y + 3) + '" width="' + w + '" height="' + (rowH - 8) + '" rx="3" class="gcb"></rect>' +
+               '<text x="' + (labW + w + 6) + '" y="' + (y + 14) + '" class="gcv">' + d.v.toLocaleString(undefined, {maximumFractionDigits: 1}) + '</text>'; }).join('') +
+      '</svg>';
+  }
+  return h + '</div>';
+}
+
 async function ask(){
   const q = $('#q').value.trim();
   if (!q) return;
@@ -436,7 +486,10 @@ async function ask(){
       body: JSON.stringify({question:q, conversation_id:convId})
     })).json();
     convId = r.conversation_id || convId;
-    pending.innerHTML = renderMd(r.answer)+
+    let answer = r.answer || '';
+    // A drawn chart replaces Genie's ASCII bar chart.
+    if (r.result && r.result.rows && r.result.rows.length >= 2) answer = answer.replace(/(`{2,3})[a-zA-Z]*\n?[\s\S]*?[\u2588\u2524][\s\S]*?\1/g, '');
+    pending.innerHTML = renderMd(answer) + renderResult(r.result) +
       '<div class="meta">execution_mode='+esc(r.execution_mode)+', '+r.elapsed_ms+'ms</div>'+
       (r.sql||[]).filter(Boolean).map(s=>'<details class="sql">'+
         '<summary>SQL Genie ran</summary><pre>'+esc(s)+'</pre></details>').join('');
