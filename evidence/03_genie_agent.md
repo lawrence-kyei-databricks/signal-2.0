@@ -29,69 +29,41 @@ Answer:
 
 Status: COMPLETED
 
-SQL Genie generated:
+SQL Genie generated (uses the model's `Top Risk Driver` dimension):
 
 ```sql
-WITH `ranked_accounts` AS (
-  SELECT
-    `Account Name`,
-    MEASURE(`Avg Risk Score`) AS `risk_score`,
-    `Risk Category`,
-    `Is Stale`,
-    `Has Escalations`,
-    `Has Backorders`,
-    MEASURE(`Avg Days Since Activity`) AS `avg_days_since_activity`,
-    MEASURE(`Open Cases`) AS `open_cases`,
-    MEASURE(`Escalated Cases`) AS `escalated_cases`,
-    MEASURE(`Backorder Lines`) AS `backorder_lines`,
-    RANK() OVER (ORDER BY MEASURE(`Avg Risk Score`) DESC) AS `risk_rank`
-  FROM `main`.`ccg_workshop_cdm`.`mv_customer_360`
-  WHERE `Account Name` IS NOT NULL
-  GROUP BY ALL
-)
 SELECT
   `Account Name`,
-  `risk_score`,
-  `Risk Category`,
-  CASE
-    WHEN `Has Escalations` = true AND `Has Backorders` = true AND `Is Stale` = true THEN 'Escalations, Backorders, and Stale Activity'
-    WHEN `Has Escalations` = true AND `Has Backorders` = true THEN 'Escalations and Backorders'
-    WHEN `Has Escalations` = true AND `Is Stale` = true THEN 'Escalations and Stale Activity'
-    WHEN `Has Backorders` = true AND `Is Stale` = true THEN 'Backorders and Stale Activity'
-    WHEN `Has Escalations` = true THEN 'Escalations'
-    WHEN `Has Backorders` = true THEN 'Backorders'
-    WHEN `Is Stale` = true THEN 'Stale Activity'
-    ELSE 'No explicit driver field available'
-  END AS `top_risk_driver`,
-  `avg_days_since_activity`,
-  `open_cases`,
-  `escalated_cases`,
-  `backorder_lines`
-FROM `ranked_accounts`
-WHERE `risk_rank` <= 5
-ORDER BY `risk_rank` ASC, `Account Name` ASC;
+  `Top Risk Driver`,
+  MEASURE(`Avg Risk Score`) AS `risk_score`
+FROM `main`.`ccg_workshop_cdm`.`mv_customer_360`
+WHERE `Account Name` IS NOT NULL
+  AND `Top Risk Driver` IS NOT NULL
+GROUP BY ALL
+ORDER BY `risk_score` DESC
+LIMIT 5
 ```
 
 Result:
 
-| Account Name | risk_score | Risk Category | top_risk_driver | avg_days_since_activity | open_cases | escalated_cases | backorder_lines |
-|---|---|---|---|---|---|---|---|
-| Massachusetts General Hospital | 66.7 | High | Backorders | 23.0 | 2 | 0 | 9 |
-| SAIC Life Sciences | 65.8 | High | Backorders and Stale Activity | 198.0 | 1 | 0 | 5 |
-| AstraZeneca Biologics | 65.0 | High | Backorders and Stale Activity | 157.0 | 1 | 0 | 7 |
-| Berkeley Lights | 62.2 | High | Backorders and Stale Activity | 365.0 | 4 | 0 | 1 |
-| University of Pittsburgh | 61.7 | High | Backorders and Stale Activity | 94.0 | 2 | 0 | 9 |
+| Account Name | Top Risk Driver | risk_score |
+|---|---|---|
+| Massachusetts General Hospital | Revenue vs 12-mo run rate: 0.33x; Revenue momentum (last 3 mo vs prior 3): -95% | 66.7 |
+| SAIC Life Sciences | Backorder rate (6 mo): 46%; Days since last rep activity: 198 | 65.8 |
+| AstraZeneca Biologics | Revenue vs 12-mo run rate: 0.20x; Revenue momentum (last 3 mo vs prior 3): -100% | 65.0 |
+| Berkeley Lights | Days since last rep activity: 365; Revenue momentum (last 3 mo vs prior 3): -40% | 62.2 |
+| University of Pittsburgh | Backorder rate (6 mo): 72%; Revenue momentum (last 3 mo vs prior 3): -80% | 61.7 |
 
 Answer:
 
-> The **5 accounts with the highest risk scores** are listed below, along with the top risk driver identified in the results:
-> 
-> - **Massachusetts General Hospital** — risk score **66.7**; top risk driver: **Backorders**
-> - **SAIC Life Sciences** — risk score **65.8**; top risk driver: **Backorders and Stale Activity**
-> - **AstraZeneca Biologics** — risk score **65.0**; top risk driver: **Backorders and Stale Activity**
-> - **Berkeley Lights** — risk score **62.2**; top risk driver: **Backorders and Stale Activity**
-> - **University of Pittsburgh** — risk score **61.7**; top risk driver: **Backorders and Stale Activity**
-> 
-> Across all 5 accounts shown, **all are in the High risk category**, and **4 of the 5** include **stale activity plus backorders** as the top risk driver.
+> The **5 accounts with the highest risk scores** are:
+> - **Massachusetts General Hospital** — **66.7**; top risk driver: Revenue vs 12-month run rate at **0.33x** and revenue momentum down **95%**
+> - **SAIC Life Sciences** — **65.8**; top risk driver: **46%** backorder rate over 6 months and **198** days since last rep activity
+> - **AstraZeneca Biologics** — **65.0**; top risk driver: Revenue vs 12-month run rate at **0.20x** and revenue momentum down **100%**
+> - **Berkeley Lights** — **62.2**; top risk driver: **365** days since last rep activity and revenue momentum down **40%**
+> - **University of Pittsburgh** — **61.7**; top risk driver: **72%** backorder rate over 6 months and revenue momentum down **80%**
+> Across these five accounts, the main risk themes are sharp revenue declines, elevated backorder rates, and long gaps in sales activity.
+
+Check: the top 5 accounts and their drivers match `account_risk_summary` (the same drivers written to Salesforce): True.
 
 Cross-check against the scored table: High accounts = 11, expected revenue at risk for High accounts = 7,621,239.00.

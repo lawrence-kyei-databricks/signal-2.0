@@ -2,7 +2,8 @@ version: 1.1
 
 source: |-
   SELECT c.*, r.ml_risk_score, r.risk_category AS ml_risk_category, r.risk_probability,
-         r.days_since_last_activity AS days_inactive_at_snapshot, r.model_version, r.snapshot_date
+         r.days_since_last_activity AS days_inactive_at_snapshot, r.model_version, r.snapshot_date,
+         r.top_risk_driver
   FROM main.ccg_workshop_cdm.customer_360 c LEFT JOIN main.ccg_workshop_cdm.account_risk_summary r ON c.sf_account_id = r.sf_account_id
 
 comment: Customer 360 risk intelligence - unified CRM + order health metrics for Compass
@@ -108,6 +109,17 @@ dimensions:
       - products
       - product mix
       - product coverage
+
+  - name: Top Risk Driver
+    expr: top_risk_driver
+    comment: "The model's top two drivers for this account's risk score (largest coefficient x standardized value), e.g. 'Backorder rate (6 mo): 72%; Revenue momentum (last 3 mo vs prior 3): -80%'"
+    display_name: Top Risk Driver
+    synonyms:
+      - risk driver
+      - main driver
+      - why at risk
+      - risk reason
+      - root cause
 
 measures:
   - name: Account Count
