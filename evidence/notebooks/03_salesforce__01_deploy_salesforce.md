@@ -29,5 +29,5 @@ Signal2_Risk_Fields assigned to integration user <redacted-email> (assigned now)
   CSP trusted site active    OK
   Lightning page             OK
 
-Test: https://orgfarm-3843d545d3-dev-ed.develop.lightning.force.com/lightning/r/Account/001bm000030G3dyAAC/view
+Test: https://<redacted-salesforce-domain>/lightning/r/Account/001bm000030G3dyAAC/view
 ```
