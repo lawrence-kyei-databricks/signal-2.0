@@ -1,6 +1,6 @@
 # Run evidence: ML: synthetic training history anchored to real account levels
 
-Source notebook: `02_ml/01_build_training_history`. Outputs exported 2026-11-22 21:45 UTC from the executed notebook (no images; tables and logs as text).
+Source notebook: `02_ml/01_build_training_history`. Outputs exported 2026-11-22 21:53 UTC from the executed notebook (no images; tables and logs as text).
 
 ## Configuration and Real Anchors
 

@@ -3,7 +3,7 @@
     <canAccessCamera>false</canAccessCamera>
     <canAccessMicrophone>false</canAccessMicrophone>
     <context>All</context>
-    <endpointUrl>https://adb-984752964297111.11.azuredatabricks.net</endpointUrl>
+    <endpointUrl>https://{{DATABRICKS_HOST}}</endpointUrl>
     <isActive>true</isActive>
     <isApplicableToConnectSrc>false</isApplicableToConnectSrc>
     <isApplicableToFontSrc>false</isApplicableToFontSrc>

@@ -1,6 +1,6 @@
 # Run evidence: ML: training, out-of-time validation, drift check, gated promotion
 
-Source notebook: `02_ml/02_train_risk_model`. Outputs exported 2026-11-22 21:40 UTC from the executed notebook (no images; tables and logs as text).
+Source notebook: `02_ml/02_train_risk_model`. Outputs exported 2026-11-22 21:53 UTC from the executed notebook (no images; tables and logs as text).
 
 ## Configuration
 

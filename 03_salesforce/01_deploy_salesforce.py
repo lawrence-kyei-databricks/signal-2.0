@@ -57,13 +57,30 @@ print(f"Salesforce: {SF_URL} | package: {PACKAGE_DIR}")
 # COMMAND ----------
 
 # DBTITLE 1,Deploy the package
+# The package in Git carries placeholders, not environment values. They are filled in here from the workspace this
+# notebook runs in and from signal_config.py, so the same package deploys to any workspace and no host is committed.
+from databricks.sdk import WorkspaceClient
+TOKENS = {
+    "{{DATABRICKS_HOST}}": WorkspaceClient().config.host.replace("https://", "").rstrip("/"),
+    "{{DASHBOARD_ID}}": cfg.DASHBOARD_ID,
+    "{{GENIE_SPACE_ID}}": cfg.GENIE_SPACE_ID,
+}
 buf = io.BytesIO()
+filled = {}
 with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
     for root, _, files in os.walk(PACKAGE_DIR):
         for name in files:
             full = os.path.join(root, name)
-            zf.write(full, os.path.relpath(full, PACKAGE_DIR))
+            text = open(full, encoding="utf-8").read()
+            n = sum(text.count(t) for t in TOKENS)
+            for token, value in TOKENS.items():
+                text = text.replace(token, value)
+            assert "{{" not in text, f"Unfilled placeholder in {name}"
+            if n:
+                filled[name] = n
+            zf.writestr(os.path.relpath(full, PACKAGE_DIR), text)
 print("files:", sorted(zipfile.ZipFile(io.BytesIO(buf.getvalue())).namelist()))
+print("placeholders filled:", filled)
 
 deploy_id = metadata("deploy", f"<met:deploy><met:ZipFile>{base64.b64encode(buf.getvalue()).decode()}</met:ZipFile>"
                      "<met:DeployOptions><met:singlePackage>true</met:singlePackage><met:rollbackOnError>true</met:rollbackOnError>"
@@ -106,5 +123,10 @@ checks = {
 }
 for k, v in checks.items():
     print(f"  {k:26s} {'OK' if v else 'MISSING'}")
+# The deployed page must point at this workspace's dashboard and Genie agent (placeholders filled, none left over)
+markup = requests.get(f"{REST}/tooling/query", headers=HDRS, params={
+    "q": "SELECT Markup FROM ApexPage WHERE Name = 'Signal2_Risk_Dashboard'"}).json()["records"][0]["Markup"]
+checks["page embeds this workspace"] = TOKENS["{{DATABRICKS_HOST}}"] in markup and "{{" not in markup
+print(f"  {'page embeds this workspace':26s} {'OK' if checks['page embeds this workspace'] else 'MISSING'}")
 assert all(checks.values()), f"Verification failed: {checks}"
-print(f"\nTest: https://{cfg.SF_DOMAIN.replace('.my.salesforce.com', '.lightning.force.com')}/lightning/r/Account/001bm000030G3dyAAC/view")
+print(f"\nTest: {SF_URL.replace('.my.salesforce.com', '.lightning.force.com')}/lightning/r/Account/001bm000030G3dyAAC/view")

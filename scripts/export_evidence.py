@@ -17,13 +17,14 @@ NOTEBOOKS = {   # repo path -> evidence title
     "02_ml/01_build_training_history": "ML: synthetic training history anchored to real account levels",
     "02_ml/02_train_risk_model": "ML: training, out-of-time validation, drift check, gated promotion",
     "02_ml/03_score_and_brief": "ML + Gen AI: scoring, AI briefings, Salesforce writeback, Lakebase and metric view refresh",
+    "03_salesforce/01_deploy_salesforce": "Salesforce: deploy the source package and verify every component",
     "04_lakebase_app/01_lakebase_setup": "Lakebase: operational schema, synced tables, app queries, latency",
     "04_lakebase_app/02_app_grants": "Lakebase: least-privilege grants for the app service principal",
 }
 MAX_ROWS = 30
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
 SCRUB = [
-    (re.compile(r"[A-Za-z0-9._%+-]+@databricks\.com"), "<redacted-email>"),
+    (re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}"), "<redacted-email>"),
     (re.compile(r"https://[A-Za-z0-9.-]+\.azuredatabricks\.net[^\s)]*"), "<workspace-url>"),
     (re.compile(r"[A-Za-z0-9-]+\.database\.[a-z0-9]+\.azuredatabricks\.net"), "<lakebase-host>"),
     (re.compile(r"[A-Za-z0-9-]+\.(?:develop\.)?my\.salesforce\.com"), "<redacted-salesforce-domain>"),

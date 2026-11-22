@@ -102,8 +102,8 @@
         <button class="tab-btn active" onclick="switchTab('dash',this)">Risk Dashboard</button>
         <button class="tab-btn" onclick="switchTab('genie',this)">Genie Agent</button>
     </div>
-    <iframe id="dash" class="tab-content active" src="https://adb-984752964297111.11.azuredatabricks.net/embed/dashboardsv3/01f1a72dc5a713608e84a6d9c8eff268"></iframe>
-    <iframe id="genie" class="tab-content" data-src="https://adb-984752964297111.11.azuredatabricks.net/embed/genie/rooms/01f19c88f94816f3808eef719283e510"></iframe>
+    <iframe id="dash" class="tab-content active" src="https://{{DATABRICKS_HOST}}/embed/dashboardsv3/{{DASHBOARD_ID}}"></iframe>
+    <iframe id="genie" class="tab-content" data-src="https://{{DATABRICKS_HOST}}/embed/genie/rooms/{{GENIE_SPACE_ID}}"></iframe>
     <div class="powered">Powered by Databricks AI/BI</div>
 </div>
 
