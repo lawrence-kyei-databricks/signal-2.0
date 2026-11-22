@@ -28,6 +28,20 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 app = FastAPI(title="Signal 2.0 - Account Risk Cockpit")
+
+
+@app.middleware("http")
+async def request_timing(request: Request, call_next):
+    """Server-side time per API call: shown in the browser's network tab (Server-Timing) and in the app logs."""
+    start = time.perf_counter()
+    response = await call_next(request)
+    ms = (time.perf_counter() - start) * 1000
+    response.headers["Server-Timing"] = f"app;dur={ms:.1f}"
+    if request.url.path.startswith("/api/"):
+        print(f"[timing] {request.method} {request.url.path} {response.status_code} {ms:.1f}ms", flush=True)
+    return response
+
+
 w = WorkspaceClient()
 
 WAREHOUSE_ID = os.environ["DATABRICKS_WAREHOUSE_ID"]
