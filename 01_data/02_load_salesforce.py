@@ -43,25 +43,11 @@ print("Salesforce consumer credentials loaded from secret scope ccg-salesforce")
 # COMMAND ----------
 
 # DBTITLE 1,Connect to Salesforce via Client Credentials Flow
-import requests
 from simple_salesforce import Salesforce
 
-# Client Credentials Flow - uses Consumer Key/Secret from External Client App
-auth_response = requests.post(
-    "https://orgfarm-3843d545d3-dev-ed.develop.my.salesforce.com/services/oauth2/token",
-    data={
-        "grant_type": "client_credentials",
-        "client_id": SF_CONSUMER_KEY,
-        "client_secret": SF_CONSUMER_SECRET,
-
-    }
-)
-print(f"Status: {auth_response.status_code}")
-print(f"Response: {auth_response.text[:300]}")
-auth_response.raise_for_status()
-auth = auth_response.json()
-
-sf = Salesforce(instance_url=auth["instance_url"], session_id=auth["access_token"])
+# Client Credentials Flow - domain comes from runtime config, not committed code
+instance_url, access_token = cfg.salesforce_session(dbutils)
+sf = Salesforce(instance_url=instance_url, session_id=access_token)
 print(f"\nConnected to: {sf.sf_instance}")
 print(f"API version: {sf.sf_version}")
 

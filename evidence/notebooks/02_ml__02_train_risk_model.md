@@ -6,7 +6,7 @@ Source notebook: `02_ml/02_train_risk_model`. Outputs exported 2026-11-22 15:09 
 
 ```text
 Features: ['log_rev_6m', 'rev_momentum_3m', 'rev_6m_vs_12m', 'backorder_rate_6m', 'slip_rate_6m', 'avg_slip_days_6m', 'activities_6m', 'activity_trend_3m', 'days_since_last_activity', 'cases_6m', 'high_priority_cases_6m']
-Experiment: /Users/<redacted-email>/thermofisher/CCG/signal-2.0-assets/ccg_account_risk_model | id: 1945376116968627
+Experiment: /Shared/signal-2.0-assets/ccg_account_risk_model | id: 1945376116968627
 ```
 
 ## Build Point-in-Time Snapshots

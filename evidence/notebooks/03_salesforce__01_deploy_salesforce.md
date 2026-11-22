@@ -5,7 +5,7 @@ Source notebook: `03_salesforce/01_deploy_salesforce`. Outputs exported 2026-11-
 ## Config and Salesforce session
 
 ```text
-Salesforce: https://orgfarm-3843d545d3-dev-ed.develop.my.salesforce.com | package: /Workspace/Users/<redacted-email>/thermofisher/CCG/signal-2.0/03_salesforce/package
+Salesforce: https://<redacted-salesforce-domain> | package: /Workspace/Users/<redacted-email>/thermofisher/CCG/signal-2.0/03_salesforce/package
 ```
 
 ## Deploy the package

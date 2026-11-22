@@ -170,7 +170,7 @@ DECIDE_QUESTIONS = json.dumps({
 import re
 
 LLM = "databricks-meta-llama-3-3-70b-instruct"
-RULES = ("You are a CCG commercial intelligence analyst at Thermo Fisher Scientific. "
+RULES = ("You are a CCG commercial intelligence analyst at a global scientific supplier. "
          "Write exactly 3 numbered recommendations for the sales rep, one sentence each, most important model driver first. "
          "Rules: (1) Use only numbers from the FACTS list, written exactly as shown and attached to the same label - "
          "never move a number to a different fact. (2) Do not calculate, round, combine, or invent any number. "

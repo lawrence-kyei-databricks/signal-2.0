@@ -4,11 +4,11 @@
   "max_concurrent_runs": 1,
   "tags": {
     "project": "signal-2.0",
-    "owner": "lawrence.kyei"
+    "owner": "workspace-user"
   },
   "email_notifications": {
     "on_failure": [
-      "lawrence.kyei@databricks.com"
+      "replace-me@databricks.com"
     ]
   },
   "tasks": [
@@ -27,7 +27,7 @@
         }
       ],
       "notebook_task": {
-        "notebook_path": "/Users/lawrence.kyei@databricks.com/thermofisher/CCG/signal-2.0/02_ml/03_score_and_brief",
+        "notebook_path": "/Users/<workspace-user>/thermofisher/CCG/signal-2.0/02_ml/03_score_and_brief",
         "source": "WORKSPACE"
       },
       "timeout_seconds": 3600

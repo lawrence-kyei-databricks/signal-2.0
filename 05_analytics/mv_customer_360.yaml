@@ -6,8 +6,8 @@ source: |-
          r.top_risk_driver
   FROM main.ccg_workshop_cdm.customer_360 c LEFT JOIN main.ccg_workshop_cdm.account_risk_summary r ON c.sf_account_id = r.sf_account_id
 
-comment: Customer 360 risk intelligence - unified CRM + order health metrics for Compass
-  2.0 demo
+comment: Customer 360 risk intelligence - unified CRM + order health metrics for the Signal 2.0
+  demo
 
 dimensions:
   - name: Account Name

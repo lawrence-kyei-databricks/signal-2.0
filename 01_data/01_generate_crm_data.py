@@ -49,7 +49,7 @@ pharma_names = [
     "Novartis Gene Therapies", "Sanofi Pasteur", "AstraZeneca Biologics",
     "Roche Diagnostics", "Bayer CropScience", "Takeda Oncology",
     "Biogen Neurodegeneration", "Vertex Pharmaceuticals", "Moderna Therapeutics",
-    "Illumina Genomics", "Thermo Fisher Internal QC",
+    "Illumina Genomics", "Internal QC Account",
 ]
 academic_names = [
     "University of Pittsburgh", "MIT Koch Institute", "Stanford Biochemistry",

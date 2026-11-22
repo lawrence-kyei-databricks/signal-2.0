@@ -4,6 +4,7 @@ Every notebook and the refresh job import this module, so IDs, names and
 secret-scope keys live in one place. Credentials are never stored here:
 they are read at runtime from the Databricks secret scope SECRET_SCOPE.
 """
+import os
 import requests
 
 # Unity Catalog
@@ -13,7 +14,7 @@ SYN_HISTORY_TABLE = f"{SCHEMA}.syn_account_monthly_history"
 METRIC_VIEW = f"{SCHEMA}.mv_customer_360"
 
 # Workspace objects that cannot live inside a Git folder (experiment, Genie agent, dashboard)
-ASSETS_FOLDER = "/Users/lawrence.kyei@databricks.com/thermofisher/CCG/signal-2.0-assets"
+ASSETS_FOLDER = "/Shared/signal-2.0-assets"
 EXPERIMENT_PATH = f"{ASSETS_FOLDER}/ccg_account_risk_model"
 WAREHOUSE_ID = "148ccb90800933a1"
 DASHBOARD_ID = "01f1a72dc5a713608e84a6d9c8eff268"
@@ -31,13 +32,23 @@ APP_NAME = "signal-account-cockpit"
 
 # Salesforce (credentials come from the secret scope, never from code)
 SECRET_SCOPE = "ccg-salesforce"
-SF_DOMAIN = "orgfarm-3843d545d3-dev-ed.develop.my.salesforce.com"
+SF_DOMAIN = os.getenv("SF_DOMAIN", "")
 SF_API_VERSION = "59.0"
 
 
 def salesforce_session(dbutils):
     """OAuth client-credentials login. Returns (instance_url, access_token)."""
-    resp = requests.post(f"https://{SF_DOMAIN}/services/oauth2/token", data={
+    sf_domain = SF_DOMAIN
+    if not sf_domain:
+        for key in ("sf-domain", "domain"):
+            try:
+                sf_domain = dbutils.secrets.get(scope=SECRET_SCOPE, key=key)
+                break
+            except Exception:
+                continue
+    if not sf_domain:
+        raise ValueError("Set SF_DOMAIN or add sf-domain/domain to the Salesforce secret scope before running this notebook.")
+    resp = requests.post(f"https://{sf_domain}/services/oauth2/token", data={
         "grant_type": "client_credentials",
         "client_id": dbutils.secrets.get(scope=SECRET_SCOPE, key="consumer-key"),
         "client_secret": dbutils.secrets.get(scope=SECRET_SCOPE, key="consumer-secret"),
