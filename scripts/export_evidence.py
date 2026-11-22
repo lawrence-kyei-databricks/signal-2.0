@@ -24,6 +24,8 @@ NOTEBOOKS = {   # repo path -> evidence title
 MAX_ROWS = 30
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
 SCRUB = [
+    # Where the repo is checked out in the workspace (the folder names are not part of the build): show it as <repo>
+    (re.compile(r"(?:/Workspace)?/Users/[^\s|]*?/signal-2\.0"), "<repo>"),
     (re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}"), "<redacted-email>"),
     (re.compile(r"https://[A-Za-z0-9.-]+\.azuredatabricks\.net[^\s)]*"), "<workspace-url>"),
     (re.compile(r"[A-Za-z0-9-]+\.database\.[a-z0-9]+\.azuredatabricks\.net"), "<lakebase-host>"),

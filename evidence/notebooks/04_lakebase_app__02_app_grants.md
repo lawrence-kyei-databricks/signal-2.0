@@ -1,6 +1,6 @@
 # Run evidence: Lakebase: least-privilege grants for the app service principal
 
-Source notebook: `04_lakebase_app/02_app_grants`. Outputs exported 2026-11-22 21:53 UTC from the executed notebook (no images; tables and logs as text).
+Source notebook: `04_lakebase_app/02_app_grants`. Outputs exported 2026-11-22 22:58 UTC from the executed notebook (no images; tables and logs as text).
 
 ## Config
 

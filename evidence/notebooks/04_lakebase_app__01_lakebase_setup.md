@@ -1,6 +1,6 @@
 # Run evidence: Lakebase: operational schema, synced tables, app queries, latency
 
-Source notebook: `04_lakebase_app/01_lakebase_setup`. Outputs exported 2026-11-22 21:53 UTC from the executed notebook (no images; tables and logs as text).
+Source notebook: `04_lakebase_app/01_lakebase_setup`. Outputs exported 2026-11-22 22:58 UTC from the executed notebook (no images; tables and logs as text).
 
 ## Config + report buffer
 

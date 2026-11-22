@@ -1,6 +1,6 @@
 # Run evidence: ML + Gen AI: scoring, AI briefings, Salesforce writeback, Lakebase and metric view refresh
 
-Source notebook: `02_ml/03_score_and_brief`. Outputs exported 2026-11-22 21:53 UTC from the executed notebook (no images; tables and logs as text).
+Source notebook: `02_ml/03_score_and_brief`. Outputs exported 2026-11-22 22:58 UTC from the executed notebook (no images; tables and logs as text).
 
 ## Configuration
 

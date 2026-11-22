@@ -27,7 +27,7 @@
         }
       ],
       "notebook_task": {
-        "notebook_path": "/Users/<workspace-user>/thermofisher/CCG/signal-2.0/02_ml/03_score_and_brief",
+        "notebook_path": "<repo>/02_ml/03_score_and_brief",
         "source": "WORKSPACE"
       },
       "timeout_seconds": 3600

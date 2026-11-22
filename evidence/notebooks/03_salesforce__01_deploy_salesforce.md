@@ -1,11 +1,11 @@
 # Run evidence: Salesforce: deploy the source package and verify every component
 
-Source notebook: `03_salesforce/01_deploy_salesforce`. Outputs exported 2026-11-22 21:53 UTC from the executed notebook (no images; tables and logs as text).
+Source notebook: `03_salesforce/01_deploy_salesforce`. Outputs exported 2026-11-22 22:58 UTC from the executed notebook (no images; tables and logs as text).
 
 ## Config and Salesforce session
 
 ```text
-Salesforce: https://[REDACTED] | package: /Workspace/Users/<redacted-email>/thermofisher/CCG/signal-2.0/03_salesforce/package
+Salesforce: https://[REDACTED] | package: <repo>/03_salesforce/package
 ```
 
 ## Deploy the package
