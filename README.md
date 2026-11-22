@@ -68,7 +68,7 @@ Objects that cannot live in a Git folder are kept in `signal-2.0-assets/` next t
 ## Security and access
 
 - **Secrets:** all Salesforce credentials are read at runtime from the `ccg-salesforce` secret scope (`consumer-key`, `consumer-secret`). Nothing secret is stored in this repo.
-- **App user authorization:** the app has the `genie` user-authorization scope, so Genie questions run with the signed-in rep's own permissions, and rep decisions record the signed-in user.
+- **App user authorization:** the app has the `genie` and `sql` user-authorization scopes, so Genie questions (and the SQL Genie runs) use the signed-in rep's own permissions, and rep decisions record the signed-in user.
 - **Lakebase least privilege:** the app service principal can SELECT the synced risk table and INSERT decisions and audit rows; it has no UPDATE, DELETE, or TRUNCATE.
 - **Salesforce field access:** the `Signal2_Risk_Fields` permission set grants the risk fields; the deploy notebook assigns it to the integration user.
 - **Before every commit:** `python scripts/check_secrets.py` must report no secrets.
@@ -93,6 +93,7 @@ Objects that cannot live in a Git folder are kept in `signal-2.0-assets/` next t
 |---|---|---|
 | App error `permission denied for schema cockpit` | The app's `postgres` resource was re-attached, which recreates its Postgres role with no privileges | Re-run `04_lakebase_app/02_app_grants` |
 | App worklist shows old scores | Lakebase synced table not refreshed after rescoring | Run the refresh job, or the last cell of `02_ml/03_score_and_brief` |
-| App update drops resources | `PATCH /api/2.0/apps/{name}` without the `resources` list removes them | Always send the full `resources` list with any app update, then re-run `02_app_grants` |
+| App update drops resources | `PATCH /api/2.0/apps/{name}` without the `resources` list removes them | Change one field with `POST /api/2.0/apps/{name}/update` and an `update_mask` (for example `user_api_scopes`); if resources were re-attached, re-run `02_app_grants` |
+| Genie in the app returns 403 | The forwarded user token lacks a scope, or the user has not consented to new scopes | App scopes must include `genie` and `sql`; re-open the app to consent; the user needs CAN RUN on the Genie agent and CAN USE on the warehouse |
 
 Internal Databricks demo. Not for external distribution.

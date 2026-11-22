@@ -1,6 +1,8 @@
 # Signal Account Cockpit - Databricks App
 # Resources (attached in the app config): postgres (Lakebase), warehouse, genie.
-# User authorization scope `genie`: Genie questions run with the signed-in rep's permissions.
+# User authorization scopes `genie` + `sql`: Genie runs as the signed-in rep and executes its SQL on the
+# warehouse with the rep's permissions. Change scopes with POST /api/2.0/apps/<name>/update and update_mask
+# "user_api_scopes" so the resources (and the Lakebase grants) are left untouched.
 command:
   - python
   - app.py

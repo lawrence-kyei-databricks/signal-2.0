@@ -129,7 +129,7 @@ def current_rep(request: Request) -> str:
 
 
 def user_auth_headers(request: Request) -> dict:
-    """On-behalf-of-user auth (app user-authorization scope `genie`): Genie runs with the rep's own
+    """On-behalf-of-user auth (app user-authorization scopes `genie` + `sql`): Genie runs with the rep's own
     permissions. Without a forwarded user token (local runs), fall back to the app service principal."""
     token = request.headers.get("x-forwarded-access-token")
     return {"Authorization": f"Bearer {token}"} if token else w.config.authenticate()
@@ -388,8 +388,13 @@ def genie_ask(body: AskIn, request: Request):
 
     with resp_ctx as resp:
         if resp.status_code >= 400:
+            hint = ""
+            if resp.status_code in (401, 403) and request.headers.get("x-forwarded-access-token"):
+                hint = (" | Genie runs as the signed-in user. Check that the app has user-authorization scopes "
+                        "genie and sql, that you re-opened the app to consent to them, and that you have "
+                        "CAN RUN on the Genie agent and CAN USE on its warehouse.")
             raise HTTPException(resp.status_code,
-                                f"genie returned {resp.status_code}: {resp.text[:500]}")
+                                f"genie returned {resp.status_code} for {current_rep(request)}: {resp.text[:400]}{hint}")
         # SSE carries no charset, so requests guesses latin-1 and mangles
         # em dashes into mojibake. Pin UTF-8.
         resp.encoding = "utf-8"
