@@ -1,4 +1,8 @@
 # Databricks notebook source
+# /// script
+# [tool.databricks.environment]
+# environment_version = "6"
+# ///
 # DBTITLE 1,Overview
 # MAGIC %md
 # MAGIC # CCG Account Risk - Scoring and AI Briefing
@@ -317,6 +321,7 @@ for rec in q.json()["records"]:
     print(rec["Name"], {k: d.get(k) for k in ["risk_score", "risk_category", "model_version", "action_type"]},
           "| fields:", rec["Risk_Score__c"], rec["Risk_Category__c"])
     assert rec["Risk_Score__c"] == d["risk_score"], "Risk_Score__c does not match the briefing"
+
 # COMMAND ----------
 
 # DBTITLE 1,Refresh Lakebase and verify the app serves the new scores

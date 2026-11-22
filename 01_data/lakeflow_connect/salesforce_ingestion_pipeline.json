@@ -1,0 +1,57 @@
+{
+  "pipeline_type": "MANAGED_INGESTION",
+  "name": "CCG Salesforce Ingestion",
+  "ingestion_definition": {
+    "connection_name": "ccg-salesforce-dev",
+    "objects": [
+      {
+        "table": {
+          "source_schema": "objects",
+          "source_table": "Account",
+          "destination_catalog": "main",
+          "destination_schema": "ccg_workshop_cdm",
+          "destination_table": "sf_account"
+        }
+      },
+      {
+        "table": {
+          "source_schema": "objects",
+          "source_table": "Contact",
+          "destination_catalog": "main",
+          "destination_schema": "ccg_workshop_cdm",
+          "destination_table": "sf_contact"
+        }
+      },
+      {
+        "table": {
+          "source_schema": "objects",
+          "source_table": "Opportunity",
+          "destination_catalog": "main",
+          "destination_schema": "ccg_workshop_cdm",
+          "destination_table": "sf_opportunity"
+        }
+      },
+      {
+        "table": {
+          "source_schema": "objects",
+          "source_table": "Case",
+          "destination_catalog": "main",
+          "destination_schema": "ccg_workshop_cdm",
+          "destination_table": "sf_case"
+        }
+      },
+      {
+        "table": {
+          "source_schema": "objects",
+          "source_table": "Task",
+          "destination_catalog": "main",
+          "destination_schema": "ccg_workshop_cdm",
+          "destination_table": "sf_task"
+        }
+      }
+    ],
+    "source_type": "SALESFORCE"
+  },
+  "schema": "ccg_workshop_cdm",
+  "catalog": "main"
+}
