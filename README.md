@@ -1,99 +1,146 @@
-# Signal 2.0 - CCG Account Risk Intelligence in Salesforce
+# Signal 2.0 - Stop Losing Lab-Supply Accounts You Could Have Saved
 
-A forward-looking account risk model for Thermo Fisher CCG, delivered where reps work: a Salesforce briefing popup, an AI/BI dashboard, a Genie agent, and a Databricks App backed by Lakebase.
+**Industry:** Life sciences tools and lab-supply distribution (Healthcare and Life Sciences)
+**Buyer:** VP Commercial / Sales Operations | **Users:** field sales reps and sales managers
+**Status:** working prototype, all data synthetic, every stage executed (see [evidence/](evidence/))
 
-## What a rep sees
+## The business problem
 
-1. **Salesforce Account page**: a morning-briefing popup with the risk score, the model's top drivers, an `ai_decide` action type and urgency, and three number-checked recommendations. Behind it, the embedded AI/BI dashboard and Genie agent.
-2. **Signal Account Cockpit (Databricks App)**: a worklist served from Lakebase in milliseconds, where reps accept, dismiss, or snooze alerts. Every decision is recorded under the rep's own identity with an append-only audit row.
+A lab-supply distributor serves hospitals, biopharma, CROs, and academic labs. When an account starts to slip, the warning signs live in different systems: **backorders and late deliveries** in the ERP, **rep inactivity and support cases** in Salesforce. Reps see the revenue drop only after it happens. Today's prioritization is a static rule (backorders + inactivity + cases), and it misses most of the accounts that are about to decline.
 
-## Architecture
+## The outcome
 
+Signal 2.0 predicts which accounts will lose revenue in the next 6 months, explains why, recommends what the rep should do, and puts it where reps already work: on the Salesforce account page, in a rep worklist app, and in plain-English Q&A.
+
+| KPI (buyer's language) | Today (rule) | With Signal 2.0 | Source |
+|---|---|---|---|
+| Declining accounts a rep sees when reviewing the top 20% of the book | 33.8% | **51.5%** | [evidence/05_business_value.md](evidence/05_business_value.md) |
+| Lost revenue those accounts represent | 34.7% | **59.8%** | same |
+| Prediction accuracy (out-of-time AUC) | 0.667 | **0.818** | [training run](evidence/notebooks/02_ml__02_train_risk_model.md) |
+| Time from new data to updated scores in Salesforce, app, and Genie | manual | **about 4 minutes**, one job | [job run](evidence/02_refresh_job_run.md) |
+| Rep worklist lookup | n/a | **1.3 ms p50** | [Lakebase run](evidence/notebooks/04_lakebase_app__01_lakebase_setup.md) |
+
+**Current book (200 accounts, $177.0M annual revenue):** $42.7M of expected revenue at risk (annual revenue x the model's probability of decline). $30.2M of it sits in the 79 High and Medium accounts reps are asked to act on.
+
+**Value estimate.** With the same rep effort, the model puts about 25 more points of the at-risk revenue in front of reps (59.8% vs 34.7%). Applied to today's $42.7M, that is **about $10.7M more at-risk revenue reps can act on**. *Assuming* reps save 25% of the at-risk revenue they work, that is **about $2.7M retained per year** for a 200-account book. The save rate is an assumption to validate in a pilot; the detection lift is measured.
+
+## What the rep and the manager see
+
+1. **Salesforce account page:** a morning briefing popup with the risk score, the model's two main drivers (for example *"Backorder rate (6 mo): 72%; Revenue momentum: -80%"*), a recommended action and urgency, and three recommendations whose numbers are checked against the account's real data. Risk fields are reportable in Salesforce list views.
+2. **Signal Account Cockpit (Databricks App):** a worklist of at-risk accounts. Reps accept, snooze, or dismiss; every decision is recorded under the signed-in rep with an append-only audit row.
+3. **Genie agent:** managers ask *"Which 5 accounts have the highest risk score, and what is their top risk driver?"* and get the answer, the SQL, and a chart. Genie runs with the user's own permissions.
+
+## The integrated data journey
+
+```mermaid
+flowchart LR
+    subgraph S["1. Ingest - Lakeflow"]
+        SF["Salesforce CRM<br/>accounts, opportunities,<br/>cases, activities"]
+        ERP["ERP orders, shipments,<br/>backorders (synthetic)"]
+        LFC["Lakeflow Connect<br/>managed ingestion"]
+        SDP["Lakeflow Declarative Pipeline<br/>customer_360 gold"]
+        SF --> LFC
+        LFC --> SDP
+        ERP --> SDP
+    end
+    subgraph G["2. Govern - Unity Catalog"]
+        UC["Tags, classification, lineage,<br/>model registry, grants,<br/>secret scope"]
+    end
+    subgraph I["3. Intelligence - ML + GenAI"]
+        ML["Risk model<br/>account_risk_model@champion"]
+        AI["ai_decide + ai_query<br/>number-checked briefings"]
+        ML --> AI
+    end
+    subgraph V["4. Serve"]
+        LB["Lakebase<br/>synced risk + rep decisions"]
+        MV["Metric view<br/>mv_customer_360"]
+        GN["Genie agent"]
+        APP["Databricks App<br/>Signal Account Cockpit"]
+        SFO["Salesforce page<br/>briefing + risk fields"]
+        DB["AI/BI dashboard"]
+    end
+    SDP --> ML
+    AI --> SFO
+    ML --> LB --> APP
+    ML --> MV --> GN --> APP
+    MV --> DB
+    UC -. governs .-> SDP
+    UC -. governs .-> ML
+    UC -. governs .-> MV
+    UC -. governs .-> LB
 ```
-Salesforce CRM --Lakeflow Connect--> sf_* tables --+
-CDM orders / shipments (cur_*) --------------------+--> customer_360 (SDP)          01_data
-                                                   |
-syn_account_monthly_history (synthetic, training) -+--> account_risk_model (UC)     02_ml
-                                                   |      @champion, gated
-                                                   v
-                            03_score_and_brief: score -> drivers -> insights -> ai_decide + ai_query
-                                                   |
-              +------------------------------------+-----------------------------+
-              v                                    v                             v
-   Salesforce (Description JSON +      mv_customer_360 -> dashboard +    Lakebase synced table -> App
-   Risk_Score__c / Risk_Category__c)   Genie agent (05_analytics)        (04_lakebase_app)
-```
 
-The refresh job in `06_orchestration` runs the pipeline and then `03_score_and_brief`, which ends by refreshing Lakebase and checking it matches Delta.
+One job (`06_orchestration`) runs it end to end: refresh Customer 360, score with the champion model, write insights and AI briefings, push to Salesforce, refresh Lakebase, and check that Lakebase matches Delta. Unity Catalog lineage confirms every link, from the ingested Salesforce tables to the Lakebase table the app reads ([governance evidence](evidence/notebooks/01_data__03_govern_unity_catalog.md)).
+
+| Stage | Databricks capability | Where | Evidence |
+|---|---|---|---|
+| Ingest | Lakeflow Connect (Salesforce, 5 objects) + Lakeflow Declarative Pipeline | `01_data/lakeflow_connect/`, `01_data/customer_360_pipeline/` | [01_lakeflow_ingestion.md](evidence/01_lakeflow_ingestion.md) |
+| Govern | Unity Catalog governed tags, column classification, lineage, model registry, secret scope | `01_data/03_govern_unity_catalog` | [governance](evidence/notebooks/01_data__03_govern_unity_catalog.md) |
+| ML | Point-in-time training, out-of-time validation, gated promotion, batch scoring | `02_ml/` | [training](evidence/notebooks/02_ml__02_train_risk_model.md), [scoring](evidence/notebooks/02_ml__03_score_and_brief.md) |
+| Gen AI | `ai_decide` (action, urgency) + `ai_query` (recommendations) with number verification | `02_ml/03_score_and_brief` | [scoring](evidence/notebooks/02_ml__03_score_and_brief.md) |
+| Operational serving | Lakebase synced table + transactional rep decisions | `04_lakebase_app/` | [Lakebase](evidence/notebooks/04_lakebase_app__01_lakebase_setup.md), [grants](evidence/notebooks/04_lakebase_app__02_app_grants.md) |
+| Natural language | Genie agent on a governed metric view | `05_analytics/` | [03_genie_agent.md](evidence/03_genie_agent.md) |
+| Business app | Databricks App + Salesforce page | `04_lakebase_app/app/`, `03_salesforce/` | [04_serving_salesforce_lakebase_app.md](evidence/04_serving_salesforce_lakebase_app.md) |
+
+## Decisions and trade-offs
+
+| Decision | Why | Trade-off |
+|---|---|---|
+| Logistic regression, not gradient boosting | It scored best out-of-time and gives per-account drivers directly (coefficient x standardized value), so reps see *why* | Less capacity for complex interactions; revisit with real history |
+| Train on a synthetic history anchored to real account levels | The demo ERP data has no link between operational pain and later revenue, so no model could learn it | Cause and effect comes from the generator. `HISTORY_SOURCE = "cdm"` switches to real history (needs about 23 months) |
+| Out-of-time validation with promotion gates (AUC >= 0.70 and >= 0.05 above the rule) | Random splits overstate accuracy on time-series accounts; gates stop a weaker model reaching reps | Fewer training rows per model |
+| Batch scoring, not a real-time endpoint | Risk changes when data refreshes, not per click. Salesforce reads scores from its own records, so there are no callouts or network allow-lists | Scores are as fresh as the last job run (about 4 minutes end to end) |
+| Lakebase for the app, not querying Delta directly | Rep clicks need millisecond reads and transactional writes (decision + audit in one transaction) | A second store to keep in sync; the job refreshes it and verifies parity |
+| One metric view for Genie and the dashboard | One definition of risk, revenue at risk, and drivers; Genie and dashboards cannot disagree | Changes go through the metric view, not ad hoc SQL |
+| `ai_decide` for structured choices, `ai_query` with a number check | Structured outputs are reliable; free-text numbers can be wrong, so every number is checked against the account's data and failures are withheld | Extra LLM call on retry (2 of 200 retried, 0 withheld in the last run) |
+| App user authorization (scopes `genie`, `sql`) | Genie answers and audit rows use the real rep's identity and permissions | Each user must have access to the Genie agent and warehouse |
+
+## Security and governance
+
+- **No secrets in code:** Salesforce credentials come from the `ccg-salesforce` secret scope; `scripts/check_secrets.py` runs before every commit.
+- **Least privilege in Lakebase:** the app service principal can read risk scores and append decisions and audit rows; UPDATE, DELETE, and TRUNCATE are withheld and verified.
+- **Classification:** every table carries governed `data_classification`, journey stage, and `data_origin = synthetic` tags; revenue columns are `confidential`.
+- **Model governance:** Unity Catalog model registry with a `champion` alias, set only when both promotion gates pass.
+
+## How AI was used as a teammate
+
+Built with **Genie Code** (Databricks' AI agent) in one workspace, with me making the product, modeling, and architecture decisions. Patterns that made the build trustworthy:
+
+- **Evidence-first loop:** every change was run, read back, and checked by a second method (for example, Genie's answer cross-checked against the scored table; Lakebase checked against Delta after every sync).
+- **AI checking AI:** the briefing step uses an LLM to write recommendations and code to verify every number before anything reaches Salesforce.
+- **Regression tests on real failures:** the app's Genie renderer was tested in Node against an actual broken answer before deploying.
+- **Mistakes caught and documented:** for example, an app update that dropped resources and reset database grants was diagnosed, fixed, and turned into a troubleshooting rule.
 
 ## Repository layout
 
 | Path | What it is |
 |---|---|
-| `signal_config.py` | Single source of configuration (schema, IDs, Lakebase names, secret scope) plus the Salesforce login helper. Every notebook imports it. |
-| `01_data/01_generate_crm_data` | Synthetic CRM accounts, contacts, opportunities, cases, tasks |
-| `01_data/02_load_salesforce` | Loads the CRM data into the Salesforce dev org |
-| `01_data/customer_360_pipeline/` | Lakeflow Spark Declarative Pipeline: `customer_360` gold materialized view |
-| `02_ml/01_build_training_history` | Seeded synthetic account-month history with cause and effect, used only for training |
-| `02_ml/02_train_risk_model` | Point-in-time training, out-of-time validation, gated promotion to `champion` |
-| `02_ml/03_score_and_brief` | Production refresh: score, explain, insights, AI briefing, Salesforce writeback, Lakebase sync |
-| `02_ml/ccg_risk_features.py` | Shared features, label, rule baseline, and driver logic (training and scoring use the same code) |
-| `03_salesforce/01_deploy_salesforce` | Deploys and verifies the Salesforce package |
-| `03_salesforce/package/` | Salesforce source: VF page, Lightning page, risk fields, permission set, CSP trusted site |
-| `04_lakebase_app/01_lakebase_setup` | Lakebase operational schema, synced table (created if missing), write-path proof, latency |
-| `04_lakebase_app/02_app_grants` | Least-privilege grants for the app service principal (SELECT + INSERT only) |
-| `04_lakebase_app/03_demo_reset` | Owner-only cleanup of test rows and optional demo reset |
-| `04_lakebase_app/app/` | Signal Account Cockpit (FastAPI + static UI) |
-| `05_analytics/` | Versioned definitions: metric view YAML, Genie agent config, dashboard JSON |
-| `06_orchestration/signal_refresh_job.json` | Refresh job definition |
-| `benchmarks/` | `ai_decide` vs `ai_classify` benchmark |
-| `scripts/check_secrets.py` | Secret scanner, run before every commit |
+| [`evidence/`](evidence/) | Execution evidence as text: notebook outputs, pipeline and job runs, Genie Q&A, serving checks, value calculation |
+| [`docs/`](docs/) | Business deck and roleplay preparation |
+| `01_data/` | Lakeflow Connect definition, CRM data generation and Salesforce load, Customer 360 pipeline, Unity Catalog governance |
+| `02_ml/` | Training history, model training, scoring and AI briefing, shared feature module |
+| `03_salesforce/` | Salesforce source package and deploy notebook |
+| `04_lakebase_app/` | Lakebase setup, grants, demo reset, Databricks App |
+| `05_analytics/` | Metric view, Genie agent, and dashboard definitions |
+| `06_orchestration/` | Refresh job definition |
+| `signal_config.py` | Single source of configuration (names, IDs, secret scope) |
 
-Objects that cannot live in a Git folder are kept in `signal-2.0-assets/` next to this repo: the MLflow experiment, the Genie agent, and the dashboard.
+## Run it
 
-## ML model
-
-- **Model:** `main.ccg_workshop_cdm.account_risk_model`, `StandardScaler` + `LogisticRegression` on 11 point-in-time features.
-- **Predicts:** the probability that an account's revenue over the next 6 months falls below 60% of its trailing 12-month run rate. `ml_risk_score` = 100 x probability; High >= 50, Medium >= 25, Low < 25.
-- **Validation:** out-of-time. Train on Aug-Nov 2025 cutoffs, test on Jan-Feb 2026. Current champion: AUC 0.818 vs 0.667 for the rule formula.
-- **Promotion gates:** out-of-time AUC >= 0.70 and at least 0.05 above the rule; otherwise the new version stays `challenger`.
-- **Drivers:** the top two per account from the model itself (coefficient x standardized value). Revenue level is a size control and never shown as a driver.
-- **Scoring:** batch, anchored to the data snapshot date. Every run is appended to `account_risk_predictions`.
-- **Training data caveat:** the demo CDM orders carry no link between operational signals and later revenue, so the model trains on a synthetic history anchored to real account levels. Set `HISTORY_SOURCE = "cdm"` in `02_train_risk_model` when real history is available; it needs about 23 months.
-
-## AI briefing
-
-`ai_decide` returns action type, urgency, and executive-attention probability in one call. `ai_query` writes three recommendations from one labeled fact per line, with rules against inventing, recalculating, or combining numbers and against numeric targets. Every number in a recommendation is checked against that account's facts; failures are regenerated once and withheld if they still fail (`account_briefing_v2.numbers_verified`).
-
-## Security and access
-
-- **Secrets:** all Salesforce credentials are read at runtime from the `ccg-salesforce` secret scope (`consumer-key`, `consumer-secret`). Nothing secret is stored in this repo.
-- **App user authorization:** the app has the `genie` and `sql` user-authorization scopes, so Genie questions (and the SQL Genie runs) use the signed-in rep's own permissions, and rep decisions record the signed-in user.
-- **Lakebase least privilege:** the app service principal can SELECT the synced risk table and INSERT decisions and audit rows; it has no UPDATE, DELETE, or TRUNCATE.
-- **Salesforce field access:** the `Signal2_Risk_Fields` permission set grants the risk fields; the deploy notebook assigns it to the integration user.
-- **Before every commit:** `python scripts/check_secrets.py` must report no secrets.
-
-## Setup (one time)
-
-1. Create the secret scope and add the Salesforce External Client App credentials:
-   ```
-   databricks secrets create-scope ccg-salesforce
-   databricks secrets put-secret ccg-salesforce consumer-key
-   databricks secrets put-secret ccg-salesforce consumer-secret
-   ```
-2. Workspace admin: Settings > Security > Embed dashboards, approve the Salesforce Visualforce domains.
-3. Run `01_data` (data and Salesforce load), then `03_salesforce/01_deploy_salesforce`.
-4. Run `02_ml/01_build_training_history` and `02_ml/02_train_risk_model`.
-5. Run `04_lakebase_app/01_lakebase_setup` and `02_app_grants`, then deploy the app from `04_lakebase_app/app`.
-6. Create the refresh job from `06_orchestration/signal_refresh_job.json` (the deployed job is `Signal 2.0 - Account Risk Refresh`).
+1. Create the `ccg-salesforce` secret scope with `consumer-key` and `consumer-secret`.
+2. `01_data`: generate and load CRM data, run Lakeflow Connect, the Customer 360 pipeline, and the governance notebook.
+3. `03_salesforce/01_deploy_salesforce`.
+4. `02_ml/01_build_training_history`, then `02_ml/02_train_risk_model`.
+5. `04_lakebase_app/01_lakebase_setup` and `02_app_grants`; deploy the app from `04_lakebase_app/app`.
+6. Create the job from `06_orchestration/signal_refresh_job.json`; each run refreshes everything above.
 
 ## Troubleshooting
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| App error `permission denied for schema cockpit` | The app's `postgres` resource was re-attached, which recreates its Postgres role with no privileges | Re-run `04_lakebase_app/02_app_grants` |
-| App worklist shows old scores | Lakebase synced table not refreshed after rescoring | Run the refresh job, or the last cell of `02_ml/03_score_and_brief` |
-| App update drops resources | `PATCH /api/2.0/apps/{name}` without the `resources` list removes them | Change one field with `POST /api/2.0/apps/{name}/update` and an `update_mask` (for example `user_api_scopes`); if resources were re-attached, re-run `02_app_grants` |
-| Genie in the app returns 403 | The forwarded user token lacks a scope, or the user has not consented to new scopes | App scopes must include `genie` and `sql`; re-open the app to consent; the user needs CAN RUN on the Genie agent and CAN USE on the warehouse |
+| App error `permission denied for schema cockpit` | The app's `postgres` resource was re-attached, recreating its database role without privileges | Re-run `04_lakebase_app/02_app_grants` |
+| Genie in the app returns 403 | Forwarded user token lacks a scope, or the user has not consented | App scopes must include `genie` and `sql`; reopen the app to consent |
+| App update drops resources | `PATCH /api/2.0/apps/{name}` without `resources` removes them | Use `POST /api/2.0/apps/{name}/update` with an `update_mask` |
+| App shows old scores | Lakebase not refreshed | Run the refresh job |
 
-Internal Databricks demo. Not for external distribution.
+All data in this repository is synthetic. No customer data is included.
