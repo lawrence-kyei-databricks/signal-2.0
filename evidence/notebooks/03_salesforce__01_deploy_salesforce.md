@@ -1,6 +1,6 @@
 # Run evidence: Salesforce: deploy the source package and verify every component
 
-Source notebook: `03_salesforce/01_deploy_salesforce`. Outputs exported 2026-11-23 00:21 UTC from the executed notebook (no images; tables and logs as text).
+Source notebook: `03_salesforce/01_deploy_salesforce`. Outputs exported 2026-11-23 00:31 UTC from the executed notebook (no images; tables and logs as text).
 
 ## Config and Salesforce session
 
@@ -13,7 +13,7 @@ Salesforce: https://[REDACTED] | package: <repo>/03_salesforce/package
 ```text
 files: ['cspTrustedSites/Databricks_Workspace_Embed.cspTrustedSite', 'flexipages/Account_Record_Page.flexipage', 'objects/Account.object', 'package.xml', 'pages/Signal2_Risk_Dashboard.page', 'pages/Signal2_Risk_Dashboard.page-meta.xml', 'permissionsets/Signal2_Risk_Fields.permissionset']
 placeholders filled: {'Signal2_Risk_Dashboard.page': 4, 'Databricks_Workspace_Embed.cspTrustedSite': 1}
-deploy 0Afbm00000pI8JVCA0: Succeeded
+deploy 0Afbm00000pI9p3CAC: Succeeded
 ```
 
 ## Grant the integration user access to the risk fields

@@ -30,6 +30,7 @@
     .conf-badge { font-size: 11px; color: #888; }
     /* NEW: Insight cards */
     .insight-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+    .insight-grid .insight-card:last-child:nth-child(odd) { grid-column: span 2; }
     .insight-card { background: #f8f9fa; border-radius: 8px; padding: 10px 14px; border-left: 3px solid #ccc; }
     .insight-card .label { font-size: 10px; text-transform: uppercase; color: #888; font-weight: 600; letter-spacing: 0.5px; }
     .insight-card .value { font-size: 18px; font-weight: 700; margin-top: 2px; }
@@ -140,7 +141,15 @@ var revTrend = briefing.rev_trend_pct;
 if (revTrend !== null && revTrend !== undefined) {
     var trendClass = revTrend <= -20 ? 'danger' : revTrend >= 20 ? 'success' : 'warning';
     var trendSign = revTrend > 0 ? '+' : '';
-    cards.push({label: 'Revenue Trend (90d)', value: trendSign + revTrend.toFixed(1) + '%', cls: trendClass});
+    cards.push({label: 'Revenue, last 90d vs prior 90d', value: trendSign + revTrend.toFixed(1) + '%', cls: trendClass});
+}
+
+// Revenue vs 12-month run rate: the model's longer view. Shown next to the 90-day trend because the two answer
+// different questions: an account that fell months ago and stayed down looks flat on 90 days but low here.
+var runRate = briefing.rev_vs_run_rate;
+if (runRate !== null && runRate !== undefined) {
+    var rrClass = runRate < 0.6 ? 'danger' : runRate < 0.9 ? 'warning' : 'success';
+    cards.push({label: 'Revenue, last 6 mo vs 12-mo run rate', value: runRate.toFixed(2) + 'x', cls: rrClass});
 }
 
 // Revenue at risk

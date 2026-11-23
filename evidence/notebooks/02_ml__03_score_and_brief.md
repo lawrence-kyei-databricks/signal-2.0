@@ -1,8 +1,14 @@
 # Run evidence: ML + Gen AI: scoring, AI briefings, Salesforce writeback, Lakebase and metric view refresh
 
-Source notebook: `02_ml/03_score_and_brief`. Outputs exported 2026-11-22 22:58 UTC from the executed notebook (no images; tables and logs as text).
+Source notebook: `02_ml/03_score_and_brief`. Outputs exported 2026-11-23 00:31 UTC from the executed notebook (no images; tables and logs as text).
 
 ## Configuration
+
+```text
+{"ts": "2026-11-23 00:25:48.566", "level": "WARNING", "logger": "pyspark.sql.connect.logging", "msg": "Effective usage policy for this session is cct.Chpub3RlYm9va3MvMTk0NTM3NjExNjk2ODgyNBABIAEyJDAxYTIwNWNiLTNlOGEtN2IzZS05ZTM5LWVkYTc4MTFjNDFmMjokNDdhOTQ4OWEtNzIzZC0zMDQ0LWE3ZGItMDcwZWY1Y2U1NjgxQiQ5NTc3Y2NlMi1mM2RkLTRiNGYtYTY1Ny1iMTYwN2UzODAxZDlKDAj/j47YBhCAgcCqAlABWAFgAWiXw4PVivTfAYgBAA==.", "context": {}}
+{"ts": "2026-11-23 00:25:48.566", "level": "WARNING", "logger": "pyspark.sql.connect.logging", "msg": "Effective usage policy for this session is cct.Chpub3RlYm9va3MvMTk0NTM3NjExNjk2ODgyNBABIAEyJDAxYTIwNWNiLTNlOGEtN2IzZS05ZTM5LWVkYTc4MTFjNDFmMjokNDdhOTQ4OWEtNzIzZC0zMDQ0LWE3ZGItMDcwZWY1Y2U1NjgxQiQ5NTc3Y2NlMi1mM2RkLTRiNGYtYTY1Ny1iMTYwN2UzODAxZDlKDAj/j47YBhCAgcCqAlABWAFgAWiXw4PVivTfAYgBAA==.", "context": {}}
+{"ts": "2026-11-23 00:25:48.566", "level": "WARNING", "logger": "pyspark.sql.connect.logging", "msg": "Effective usage policy for this session is cct.Chpub3RlYm9va3MvMTk0NTM3NjExNjk2ODgyNBABIAEyJDAxYTIwNWNiLTNlOGEtN2IzZS05ZTM5LWVkYTc4MTFjNDFmMjokNDdhOTQ4OWEtNzIzZC0zMDQ0LWE3ZGItMDcwZWY1Y2U1NjgxQiQ5NTc3Y2NlMi1mM2RkLTRiNGYtYTY1Ny1iMTYwN2UzODAxZDlKDAj/j47YBhCAgcCqAlABWAFgAWiXw4PVivTfAYgBAA==.", "context": {}}
+```
 
 ```text
 Data snapshot 2026-08-14 | scoring as of 2026-08-31 | main.ccg_workshop_cdm.account_risk_model v6 (champion)

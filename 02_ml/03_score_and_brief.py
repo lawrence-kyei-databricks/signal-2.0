@@ -292,6 +292,11 @@ sf_headers = {"Authorization": f"Bearer {sf_token}", "Content-Type": "applicatio
 def num(v, cast=float):
     return cast(v) if v is not None else None
 
+# The model's revenue-vs-run-rate feature from this scoring run, shown on the Salesforce banner next to the 90-day trend
+run_rate = {x.sf_account_id: float(x.rev_6m_vs_12m) for x in spark.sql(f"""
+    SELECT sf_account_id, rev_6m_vs_12m FROM {SCHEMA}.account_risk_predictions
+    WHERE scored_at = (SELECT MAX(scored_at) FROM {SCHEMA}.account_risk_predictions)""").collect()}
+
 records = []
 for r in spark.table(f"{SCHEMA}.account_briefing_v2").collect():
     payload = {
@@ -303,6 +308,7 @@ for r in spark.table(f"{SCHEMA}.account_briefing_v2").collect():
         "rev_trend_pct": num(r.rev_trend_pct), "revenue_at_risk": num(r.revenue_at_risk, int) or 0,
         "risk_vs_industry": num(r.risk_vs_industry) or 0.0, "industry": r.industry,
         "delivery_pushed_pct": num(r.pct_delivery_pushed) or 0.0,
+        "rev_vs_run_rate": round(run_rate[r.sf_account_id], 2) if r.sf_account_id in run_rate else None,
     }
     records.append({"attributes": {"type": "Account"}, "Id": r.sf_account_id,
                     "Description": json.dumps(payload, ensure_ascii=False),       # read by the Signal 2.0 VF popup
@@ -326,6 +332,7 @@ for rec in q.json()["records"]:
     print(rec["Name"], {k: d.get(k) for k in ["risk_score", "risk_category", "model_version", "action_type"]},
           "| fields:", rec["Risk_Score__c"], rec["Risk_Category__c"])
     assert rec["Risk_Score__c"] == d["risk_score"], "Risk_Score__c does not match the briefing"
+assert sum(1 for x in records if json.loads(x["Description"])["rev_vs_run_rate"] is not None) == len(records), "rev_vs_run_rate missing for some accounts"
 
 # COMMAND ----------
 
