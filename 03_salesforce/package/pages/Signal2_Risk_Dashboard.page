@@ -171,7 +171,15 @@ for (var i = 0; i < cards.length; i++) {
     var c = cards[i];
     var div = document.createElement('div');
     div.className = 'insight-card ' + c.cls;
-    div.innerHTML = '<div class="label">' + c.label + '</div><div class="value">' + c.value + '</div>';
+    // Text nodes, not innerHTML: labels include data values (the account's industry)
+    var lab = document.createElement('div');
+    lab.className = 'label';
+    lab.textContent = c.label;
+    var val = document.createElement('div');
+    val.className = 'value';
+    val.textContent = c.value;
+    div.appendChild(lab);
+    div.appendChild(val);
     grid.appendChild(div);
 }
 
@@ -192,7 +200,9 @@ if (execProb >= 0.5) {
 }
 
 // Recommendations
-var recs = (briefing.recommendations || '').split(/\d+\.\s*/);
+// Split only on list markers at the start of a line ("1. ", "2. "), the same rule the app uses. Splitting on any
+// "digit + dot" also cut inside numbers such as -6.9% and dropped the third recommendation.
+var recs = (briefing.recommendations || '').split(/(?:^|\n)\s*\d\.\s+/);
 var recList = document.getElementById('recList');
 var recIdx = 0;
 for (var r = 0; r < recs.length; r++) {
@@ -201,7 +211,14 @@ for (var r = 0; r < recs.length; r++) {
     recIdx++;
     if (recIdx > 3) break;
     var li = document.createElement('li');
-    li.innerHTML = '<span class="rec-num rec-' + recIdx + '">' + recIdx + '</span><span>' + txt + '</span>';
+    // Build the item with text nodes, never innerHTML: the recommendation is LLM output and must not render as markup
+    var num = document.createElement('span');
+    num.className = 'rec-num rec-' + recIdx;
+    num.textContent = recIdx;
+    var body = document.createElement('span');
+    body.textContent = txt;
+    li.appendChild(num);
+    li.appendChild(body);
     recList.appendChild(li);
 }
 
